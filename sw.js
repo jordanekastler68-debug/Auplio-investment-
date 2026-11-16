@@ -1,5 +1,5 @@
 // Cache hors ligne. Incrémenter VERSION à chaque mise en ligne pour forcer la mise à jour.
-const VERSION = 'ai-v1';
+const VERSION = 'ai-v2';
 const ASSETS = ['./', 'index.html', 'styles.css', 'app.js', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', e => {

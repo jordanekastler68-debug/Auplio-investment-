@@ -16,18 +16,72 @@ const monthName = k => { const [y, m] = k.split('-').map(Number); return new Dat
 const shiftMonth = (k, n) => { const [y, m] = k.split('-').map(Number); const d = new Date(y, m - 1 + n, 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; };
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-/* ---------- État ---------- */
-function load() {
-  try {
-    const d = JSON.parse(localStorage.getItem(KEY));
-    if (d && Array.isArray(d.expenses)) return d;
-  } catch (e) { /* données absentes ou illisibles */ }
-  return { expenses: [], fixed: [], categories: [...DEFAULT_CATS], settings: { income: 0, savings: 0, months: 3, margin: 10 } };
+/* ---------- Stockage ----------
+   Sauvegarde automatique à chaque action, en double :
+   1) IndexedDB (base de données interne de l'appli, stockage principal)
+   2) localStorage (copie de secours)
+   + demande de stockage « persistant » : Chrome ne l'efface plus de lui-même. */
+const DB_NAME = 'auplio-investment', STORE = 'data';
+function idb() {
+  return new Promise((res, rej) => {
+    if (!('indexedDB' in window)) return rej(new Error('no idb'));
+    const r = indexedDB.open(DB_NAME, 1);
+    r.onupgradeneeded = () => r.result.createObjectStore(STORE);
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
 }
-let state = load();
-const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { toast('Impossible d\'enregistrer'); } };
+async function idbGet() {
+  const db = await idb();
+  return new Promise((res, rej) => { const q = db.transaction(STORE).objectStore(STORE).get('state'); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); });
+}
+async function idbPut(v) {
+  const db = await idb();
+  return new Promise((res, rej) => { const t = db.transaction(STORE, 'readwrite'); t.objectStore(STORE).put(v, 'state'); t.oncomplete = res; t.onerror = () => rej(t.error); });
+}
+const blank = () => ({ expenses: [], fixed: [], categories: [...DEFAULT_CATS], settings: { income: 0, savings: 0, months: 3, margin: 10 }, updatedAt: 0 });
+const valid = d => d && Array.isArray(d.expenses) && d.settings;
 
-let selectedCat = state.categories[0];
+async function load() {
+  let a = null, b = null;
+  try { a = await idbGet(); } catch (e) { /* IndexedDB indisponible */ }
+  try { b = JSON.parse(localStorage.getItem(KEY)); } catch (e) { /* rien */ }
+  const cands = [a, b].filter(valid).sort((x, y) => (y.updatedAt || 0) - (x.updatedAt || 0));
+  return cands[0] || blank();   // la copie la plus récente gagne
+}
+let state = blank();
+let saveOk = true;
+async function save() {
+  state.updatedAt = Date.now();
+  const json = JSON.stringify(state);
+  let ok = false;
+  try { await idbPut(JSON.parse(json)); ok = true; } catch (e) { /* on tente la copie */ }
+  try { localStorage.setItem(KEY, json); ok = true; } catch (e) { /* rien */ }
+  saveOk = ok;
+  if (!ok) toast('⚠ Échec de la sauvegarde');
+  renderStorage();
+}
+
+let persisted = null;
+async function ensurePersistent() {
+  try {
+    if (navigator.storage && navigator.storage.persist) {
+      persisted = await navigator.storage.persisted() || await navigator.storage.persist();
+    }
+  } catch (e) { persisted = false; }
+  renderStorage();
+}
+function renderStorage() {
+  const el = $('storageStatus'); if (!el) return;
+  const last = state.updatedAt ? new Date(state.updatedAt).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+  const prot = persisted === true ? '✓ Stockage protégé (Chrome ne l\'efface pas)'
+    : persisted === false ? '⚠ Stockage non protégé : installe l\'appli sur l\'écran d\'accueil puis rouvre-la'
+    : 'Vérification du stockage…';
+  el.innerHTML = `${saveOk ? '✓ Sauvegarde automatique active' : '⚠ Dernière sauvegarde échouée'}<br>${prot}<br>` +
+    `${state.expenses.length} dépense(s) enregistrée(s) · dernière modif. ${last}`;
+}
+
+let selectedCat = DEFAULT_CATS[0];
 let viewMonth = ym(todayISO());
 
 /* ---------- Calculs ---------- */
@@ -125,7 +179,7 @@ function renderReglages() {
     : '<li class="empty">Aucune charge fixe.</li>';
 }
 
-function render() { renderChips(); renderSaisie(); renderMois(); renderInvestir(); renderReglages(); }
+function render() { renderChips(); renderSaisie(); renderMois(); renderInvestir(); renderReglages(); renderStorage(); }
 
 function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('show'), 1800); }
 
@@ -217,4 +271,12 @@ $('importFile').addEventListener('change', async e => {
 /* ---------- Démarrage ---------- */
 $('date').value = todayISO();
 render();
+load().then(d => {
+  state = d; selectedCat = state.categories[0];
+  render();
+  if (!state.updatedAt) save();   // premier lancement : crée la base
+  ensurePersistent();
+});
+// Filet de sécurité : sauvegarde quand l'appli passe en arrière-plan.
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && state.updatedAt) save(); });
 if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
