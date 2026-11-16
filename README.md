@@ -15,7 +15,7 @@ Données 100 % locales sur le téléphone (localStorage), fonctionne hors ligne.
 
 ## Installation sur le téléphone
 1. Activer GitHub Pages : *Settings → Pages → Deploy from a branch → `main` / root*.
-2. Ouvrir `https://<compte>.github.io/auplio-investment/` dans Chrome sur Android.
+2. Ouvrir `https://jordanekastler68-debug.github.io/Auplio-investment-/` dans Chrome sur Android.
 3. Menu ⋮ → **Ajouter à l'écran d'accueil**.
 
 ## Développement local
