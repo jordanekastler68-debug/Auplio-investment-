@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1b2d">
+<title>Auplio Investment</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="top">
+  <h1>Auplio <span>Investment</span></h1>
+  <div id="monthLabel" class="month"></div>
+</header>
+
+<main>
+  <!-- SAISIE -->
+  <section id="tab-saisie" class="tab active">
+    <form id="expenseForm" class="card">
+      <label class="amount">
+        <input id="amount" type="text" inputmode="decimal" placeholder="0,00" autocomplete="off" required>
+        <span>€</span>
+      </label>
+      <div id="catChips" class="chips"></div>
+      <div class="row">
+        <input id="note" type="text" placeholder="Note (facultatif)" maxlength="60">
+        <input id="date" type="date">
+      </div>
+      <button type="submit" class="primary">Ajouter la dépense</button>
+    </form>
+    <div class="card">
+      <div class="card-head"><h2>Dernières dépenses</h2><span id="monthTotal" class="muted"></span></div>
+      <ul id="recentList" class="list"></ul>
+    </div>
+  </section>
+
+  <!-- MOIS -->
+  <section id="tab-mois" class="tab">
+    <div class="card">
+      <div class="month-nav">
+        <button id="prevMonth" aria-label="Mois précédent">‹</button>
+        <strong id="viewMonthLabel"></strong>
+        <button id="nextMonth" aria-label="Mois suivant">›</button>
+      </div>
+      <div class="kpis">
+        <div><small>Revenus</small><b id="kIncome"></b></div>
+        <div><small>Charges fixes</small><b id="kFixed"></b></div>
+        <div><small>Dépenses</small><b id="kVar"></b></div>
+        <div><small>Reste</small><b id="kLeft"></b></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Par catégorie</h2>
+      <ul id="catBreakdown" class="bars"></ul>
+    </div>
+    <div class="card">
+      <h2>Toutes les dépenses du mois</h2>
+      <ul id="monthList" class="list"></ul>
+    </div>
+  </section>
+
+  <!-- INVESTIR -->
+  <section id="tab-investir" class="tab">
+    <div class="card hero">
+      <small>Montant investissable ce mois-ci</small>
+      <div id="investable" class="big"></div>
+      <p id="investMsg" class="muted"></p>
+    </div>
+    <div class="card">
+      <h2>Épargne de précaution</h2>
+      <div class="progress"><div id="cushionBar"></div></div>
+      <p id="cushionTxt" class="muted"></p>
+    </div>
+    <div class="card">
+      <h2>Le calcul</h2>
+      <table class="calc" id="calcTable"></table>
+      <p class="muted small">Dépenses variables = moyenne des 3 derniers mois complets (ou projection du mois en cours si pas d'historique). Simple outil de calcul, pas un conseil en investissement.</p>
+    </div>
+  </section>
+
+  <!-- RÉGLAGES -->
+  <section id="tab-reglages" class="tab">
+    <form id="settingsForm" class="card">
+      <h2>Revenus mensuels nets</h2>
+      <input id="sIncome" type="text" inputmode="decimal" placeholder="ex. 2100">
+      <h2>Épargne de précaution</h2>
+      <div class="row">
+        <label class="field">Montant actuel (€)<input id="sSavings" type="text" inputmode="decimal"></label>
+        <label class="field">Objectif (mois)<input id="sMonths" type="number" min="1" max="24" step="1"></label>
+      </div>
+      <label class="field">Marge de sécurité sur le surplus (%)<input id="sMargin" type="number" min="0" max="80" step="5"></label>
+      <button type="submit" class="primary">Enregistrer</button>
+    </form>
+    <div class="card">
+      <h2>Charges fixes mensuelles</h2>
+      <ul id="fixedList" class="list"></ul>
+      <form id="fixedForm" class="row">
+        <input id="fLabel" type="text" placeholder="Loyer, assurance…" required>
+        <input id="fAmount" type="text" inputmode="decimal" placeholder="€" required class="short">
+        <button type="submit" class="ghost">+</button>
+      </form>
+    </div>
+    <div class="card">
+      <h2>Catégories de dépenses</h2>
+      <div id="catEdit" class="chips"></div>
+      <form id="catForm" class="row">
+        <input id="cName" type="text" placeholder="Nouvelle catégorie" maxlength="20" required>
+        <button type="submit" class="ghost">+</button>
+      </form>
+    </div>
+    <div class="card">
+      <h2>Sauvegarde</h2>
+      <p class="muted small">Tes données restent sur ce téléphone. Exporte-les régulièrement.</p>
+      <div class="row">
+        <button id="exportBtn" class="ghost">Exporter (JSON)</button>
+        <button id="exportCsvBtn" class="ghost">Exporter (CSV)</button>
+      </div>
+      <label class="ghost file">Importer une sauvegarde<input id="importFile" type="file" accept="application/json"></label>
+    </div>
+  </section>
+</main>
+
+<nav class="tabs">
+  <button data-tab="saisie" class="active">＋<span>Saisie</span></button>
+  <button data-tab="mois">▤<span>Mois</span></button>
+  <button data-tab="investir">↗<span>Investir</span></button>
+  <button data-tab="reglages">⚙<span>Réglages</span></button>
+</nav>
+
+<div id="toast" class="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>
