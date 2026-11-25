@@ -3,6 +3,12 @@
 Application mobile (PWA installable sur Android) pour gérer le budget d'un couple, repérer où économiser, préparer un achat immobilier et calculer chaque mois le montant réellement investissable.
 Complément de Vigie Trading Analytics : Vigie dit **où** investir, Auplio Investment dit **combien**, et seulement après la sécurité et l'apport.
 
+## Fonctionnement (v0.4)
+Chacun installe l'appli sur son téléphone et saisit **ses** dépenses. Chaque mois, chacun entre le **net payé** de sa fiche de paie. Les deux téléphones se réunissent par « Envoyer mes données » / « Recevoir et fusionner » pour la vue d'ensemble du foyer.
+
+- **Accueil** : fiches de paie du mois, vue d'ensemble (qui a gagné / dépensé quoi, reste du foyer), « À faire ce mois-ci » (virements épargne de sécurité → apport maison → investissement, avec bouton *Fait* qui met à jour l'épargne ; budgets dépassés ; postes qui dérapent), objectifs, détail du calcul replié.
+- **Saisie** · **Dépenses** (filtre Tout / chacun / Commun, où part l'argent, budgets, où économiser) · **Maison** (projet immobilier) · **Réglages**.
+
 ## Fonctions (v0.3)
 - **Saisie** : dépense ou revenu exceptionnel en deux taps, payé par l'un, l'autre ou en commun.
 - **Mois** : revenus du foyer, charges fixes, dépenses, reste ; répartition par personne et par catégorie.

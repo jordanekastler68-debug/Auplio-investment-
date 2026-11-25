@@ -105,3 +105,28 @@ summary{cursor:pointer;color:var(--steel);font-weight:600;font-size:.9rem;paddin
 .implist select{padding:4px 6px;font-size:.78rem;width:auto;max-width:120px;border-radius:8px}
 .impbar{position:sticky;bottom:calc(64px + env(safe-area-inset-bottom));padding:8px 0}
 .impbar .primary{box-shadow:0 4px 14px rgba(15,27,45,.25)}
+/* ---- v0.4 : accueil, vue d'ensemble, à faire ---- */
+.mini-nav{display:flex;align-items:center;gap:6px;font-size:.85rem;text-transform:capitalize}
+.mini-nav button{background:#eef1f4;padding:4px 10px;border-radius:8px}
+.mini-nav button:disabled{opacity:.35}
+.calc.ov td{text-align:right}.calc.ov td:first-child{text-align:left}
+.calc.ov tr.head td{text-align:right}
+.left-line{display:flex;justify-content:space-between;align-items:baseline;margin-top:10px;padding-top:10px;border-top:2px solid var(--night)}
+.left-line span{font-weight:600}.left-line b{font-size:1.5rem}
+.todo{list-style:none;margin:0;padding:0}
+.todo li{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f0f1f3}
+.todo li:last-child{border:0}
+.todo .ico{flex:0 0 28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#eef1f4;color:var(--night);font-weight:700}
+.todo li.warn .ico{background:#f4efe3;color:#8a6d33}.todo li.bad .ico{background:#f8e9e4;color:var(--warn)}
+.todo li.done .ico{background:#e7f3ed;color:var(--ok)}.todo li.done b{color:var(--muted);font-weight:500}
+.todo .l{flex:1;min-width:0}.todo .l b{display:block;font-weight:600;font-size:.95rem}.todo .l small{color:var(--muted);font-size:.8rem}
+.todo .ghost.sm{flex:0 0 auto}
+.goal{margin:4px 0 14px}.goal:last-child{margin-bottom:0}
+.goal .t{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px}
+.goal .t span{font-size:.88rem;font-variant-numeric:tabular-nums}
+.goal small{display:block;margin-top:4px;font-size:.8rem}
+.kpis.two{margin-bottom:12px}
+.note{font-weight:400;color:var(--muted);font-size:.85rem}
+.card details{margin-top:10px}
+#filterSeg{margin:0 0 12px}
+#filterSeg button{font-size:.82rem}

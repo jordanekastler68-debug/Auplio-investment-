@@ -17,12 +17,69 @@
 </header>
 
 <main>
+  <!-- ============ ACCUEIL ============ -->
+  <section id="tab-home" class="tab active">
+    <div class="card" id="whoCard">
+      <h2>Bienvenue ! Qui êtes-vous ?</h2>
+      <p class="muted small">Chacun installe l'appli sur son téléphone et saisit ses propres dépenses. Indiquez vos deux prénoms, puis qui utilise ce téléphone.</p>
+      <div class="row">
+        <input id="wNameA" type="text" maxlength="16" placeholder="Prénom 1">
+        <input id="wNameB" type="text" maxlength="16" placeholder="Prénom 2">
+      </div>
+      <p class="label">Ce téléphone est celui de :</p>
+      <div class="row">
+        <button type="button" class="primary" data-setme="a" id="wMeA">Prénom 1</button>
+        <button type="button" class="primary" data-setme="b" id="wMeB">Prénom 2</button>
+      </div>
+    </div>
+
+    <div class="card" id="payCard">
+      <div class="card-head">
+        <h2>Fiches de paie</h2>
+        <div class="mini-nav"><button type="button" id="payPrev" aria-label="Mois précédent">‹</button><b id="payMonth"></b><button type="button" id="payNext" aria-label="Mois suivant">›</button></div>
+      </div>
+      <p class="muted small">Le « net payé » en bas de la fiche de paie, chaque mois.</p>
+      <form id="payForm">
+        <div class="row">
+          <label class="field"><span id="payLblA">Prénom 1</span><input id="payA" type="text" inputmode="decimal" placeholder="€"></label>
+          <label class="field"><span id="payLblB">Prénom 2</span><input id="payB" type="text" inputmode="decimal" placeholder="€"></label>
+        </div>
+        <button type="submit" class="primary">Enregistrer les salaires</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2 id="ovTitle">Vue d'ensemble</h2>
+      <table class="calc ov" id="ovTable"></table>
+      <div class="left-line"><span>Reste à ce jour</span><b id="ovLeft"></b></div>
+      <p class="muted small" id="ovNote"></p>
+    </div>
+
+    <div class="card">
+      <h2>À faire ce mois-ci</h2>
+      <ul id="todoList" class="todo"></ul>
+    </div>
+
+    <div class="card">
+      <h2>Vos objectifs</h2>
+      <div id="goals"></div>
+    </div>
+
+    <div class="card">
+      <details>
+        <summary>Comment c'est calculé</summary>
+        <table class="calc" id="calcTable"></table>
+        <p class="muted small" id="calcBasis"></p>
+      </details>
+    </div>
+  </section>
+
   <!-- ============ SAISIE ============ -->
-  <section id="tab-saisie" class="tab active">
+  <section id="tab-saisie" class="tab">
     <form id="opForm" class="card">
       <div class="seg" id="typeSeg">
         <button type="button" data-type="dep" class="on">Dépense</button>
-        <button type="button" data-type="rev">Revenu exceptionnel</button>
+        <button type="button" data-type="rev">Rentrée d'argent</button>
       </div>
       <label class="amount">
         <input id="amount" type="text" inputmode="decimal" placeholder="0,00" autocomplete="off" required>
@@ -31,7 +88,7 @@
       <div id="catBlock">
         <div id="catChips" class="chips"></div>
       </div>
-      <p class="label">Payé par / reçu par</p>
+      <p class="label" id="whoLabel">Payé par</p>
       <div class="seg" id="whoSeg"></div>
       <div class="row">
         <input id="note" type="text" placeholder="Note (facultatif)" maxlength="60">
@@ -40,108 +97,77 @@
       <button type="submit" class="primary" id="opSubmit">Ajouter la dépense</button>
     </form>
     <div class="card">
-      <h2>Relevé bancaire</h2>
-      <p class="muted small">Télécharge le relevé de ton compte au format CSV (appli ou site de ta banque, rubrique « Exporter » / « Télécharger mes opérations »), puis importe-le : les dépenses sont classées toutes seules. Importer 2 ou 3 mois d'un coup donne tout de suite des moyennes fiables.</p>
-      <label class="ghost file">Importer un relevé (CSV)<input id="csvFile" type="file" accept=".csv,.txt,text/csv,text/plain,text/comma-separated-values,application/vnd.ms-excel"></label>
+      <div class="card-head"><h2>Mes dernières saisies</h2><span id="monthTotal" class="muted small"></span></div>
+      <ul id="recentList" class="list"></ul>
     </div>
     <div class="card">
-      <div class="card-head"><h2>Dernières opérations</h2><span id="monthTotal" class="muted small"></span></div>
-      <ul id="recentList" class="list"></ul>
+      <h2>Gagner du temps : relevé bancaire</h2>
+      <p class="muted small">Au lieu de tout saisir : exporte tes opérations au format CSV depuis l'appli ou le site de ta banque, puis importe le fichier. Les dépenses sont classées toutes seules.</p>
+      <label class="ghost file">Importer un relevé (CSV)<input id="csvFile" type="file" accept=".csv,.txt,text/csv,text/plain,text/comma-separated-values,application/vnd.ms-excel"></label>
     </div>
   </section>
 
-  <!-- ============ MOIS ============ -->
-  <section id="tab-mois" class="tab">
+  <!-- ============ DÉPENSES ============ -->
+  <section id="tab-depenses" class="tab">
     <div class="card">
       <div class="month-nav">
         <button id="prevMonth" aria-label="Mois précédent">‹</button>
         <strong id="viewMonthLabel"></strong>
         <button id="nextMonth" aria-label="Mois suivant">›</button>
       </div>
+      <div class="seg" id="filterSeg"></div>
       <div class="kpis">
-        <div><small>Revenus du foyer</small><b id="kIncome"></b></div>
+        <div><small>Rentrées</small><b id="kIncome"></b></div>
+        <div><small>Dépensé</small><b id="kVar"></b></div>
         <div><small>Charges fixes</small><b id="kFixed"></b></div>
-        <div><small>Dépenses</small><b id="kVar"></b></div>
         <div><small>Reste</small><b id="kLeft"></b></div>
       </div>
     </div>
     <div class="card">
-      <h2>Par personne</h2>
-      <table class="calc" id="whoTable"></table>
-    </div>
-    <div class="card">
-      <h2>Par catégorie</h2>
+      <h2>Où part l'argent</h2>
       <ul id="catBreakdown" class="bars"></ul>
+      <details>
+        <summary>Fixer des budgets par catégorie</summary>
+        <ul id="budgetList" class="bars"></ul>
+        <form id="budgetForm" class="row">
+          <select id="bCat"></select>
+          <input id="bAmount" type="text" inputmode="decimal" placeholder="€ / mois" class="short">
+          <button type="submit" class="ghost">OK</button>
+        </form>
+        <p class="muted small">Mets 0 pour retirer un budget. Un budget dépassé apparaît dans « À faire » sur l'accueil.</p>
+      </details>
     </div>
     <div class="card">
-      <h2>Toutes les opérations du mois</h2>
+      <h2>Le détail</h2>
       <ul id="monthList" class="list"></ul>
     </div>
-  </section>
-
-  <!-- ============ ÉCONOMIES ============ -->
-  <section id="tab-eco" class="tab">
-    <div class="card hero">
-      <small>Taux d'épargne du foyer</small>
-      <div id="saveRate" class="big"></div>
-      <p id="saveRateMsg" class="muted"></p>
-    </div>
     <div class="card">
-      <h2>Où agir en priorité</h2>
+      <h2>Où économiser</h2>
       <div class="slider">
-        <span>Réduction testée</span>
+        <span>Si on réduit de</span>
         <input id="ecoPct" type="range" min="5" max="50" step="5" value="20">
         <b id="ecoPctLbl">20 %</b>
       </div>
       <ul id="leverList" class="list"></ul>
       <p id="leverMsg" class="small"></p>
-    </div>
-    <div class="card">
-      <h2>Budgets du mois</h2>
-      <ul id="budgetList" class="bars"></ul>
-      <form id="budgetForm" class="row">
-        <select id="bCat"></select>
-        <input id="bAmount" type="text" inputmode="decimal" placeholder="€ / mois" class="short">
-        <button type="submit" class="ghost">OK</button>
-      </form>
-      <p class="muted small">Mets 0 pour retirer un budget.</p>
-    </div>
-    <div class="card">
-      <h2>Ce qui augmente ce mois-ci</h2>
-      <ul id="driftList" class="list"></ul>
-    </div>
-    <div class="card">
-      <h2>Abonnements</h2>
-      <ul id="subList" class="list"></ul>
+      <details>
+        <summary>Abonnements</summary>
+        <ul id="subList" class="list"></ul>
+      </details>
     </div>
   </section>
 
-  <!-- ============ OBJECTIFS ============ -->
-  <section id="tab-plan" class="tab">
-    <div class="card hero">
-      <small>Investissable ce mois-ci (pour Vigie)</small>
-      <div id="investable" class="big"></div>
-      <p id="investMsg" class="muted"></p>
-    </div>
-    <div class="card">
-      <h2>Où va le surplus chaque mois</h2>
-      <table class="calc" id="calcTable"></table>
-      <p class="muted small" id="calcBasis"></p>
-    </div>
-    <div class="card">
-      <h2>1 · Épargne de précaution</h2>
-      <div class="progress"><div id="cushionBar"></div></div>
-      <p id="cushionTxt" class="muted small"></p>
-    </div>
+  <!-- ============ MAISON ============ -->
+  <section id="tab-maison" class="tab">
     <div class="card" id="projectCard">
-      <h2>2 · Projet immobilier</h2>
+      <h2>Projet d'achat immobilier</h2>
       <div id="projectOff">
-        <p class="muted small">Renseigne le bien visé : l'appli calcule l'apport à constituer, la date à laquelle vous l'aurez, la mensualité et si la banque peut suivre (35 % d'endettement maximum, 25 ans).</p>
-        <button type="button" class="primary" id="projectOn">Activer le projet immobilier</button>
+        <p class="muted small">Indiquez le bien visé : l'appli calcule l'apport à mettre de côté, quand vous l'aurez, la mensualité et si la banque peut suivre (35 % d'endettement maximum, 25 ans).</p>
+        <button type="button" class="primary" id="projectOn">Configurer le projet</button>
       </div>
       <div id="projectRes"></div>
       <details id="projectDetails">
-        <summary>Paramètres du projet</summary>
+        <summary>Modifier le projet</summary>
         <form id="projectForm">
           <label class="check"><input id="pEnabled" type="checkbox"> Projet actif</label>
           <div class="row">
@@ -150,11 +176,11 @@
           </div>
           <div class="row">
             <label class="field">Travaux (€)<input id="pWorks" type="text" inputmode="decimal"></label>
-            <label class="field">Apport déjà épargné (€)<input id="pSaved" type="text" inputmode="decimal"></label>
+            <label class="field">Apport déjà de côté (€)<input id="pSaved" type="text" inputmode="decimal"></label>
           </div>
           <div class="row">
             <label class="field">Apport visé (% du prix, en plus des frais)<input id="pApportPct" type="number" min="0" max="100" step="1"></label>
-            <label class="field">Part du surplus vers l'apport (%)<input id="pShare" type="number" min="0" max="100" step="5"></label>
+            <label class="field">Part de l'épargne mensuelle pour l'apport (%)<input id="pShare" type="number" min="0" max="100" step="5"></label>
           </div>
           <div class="row">
             <label class="field">Taux du prêt (%)<input id="pRate" type="text" inputmode="decimal"></label>
@@ -165,11 +191,7 @@
         </form>
       </details>
     </div>
-    <div class="card">
-      <h2>3 · Investissement</h2>
-      <p class="muted small" id="investTxt"></p>
-    </div>
-    <p class="muted small center">Outil de calcul indicatif, pas un conseil financier. Les banques calculent l'endettement sur les revenus nets avant impôt : le taux affiché ici est donc un peu prudent.</p>
+    <p class="muted small center">Calcul indicatif, pas un conseil financier. Les banques calculent l'endettement sur les revenus nets avant impôt : le taux affiché ici est donc un peu prudent.</p>
   </section>
 
   <!-- ============ IMPORT CSV ============ -->
@@ -186,31 +208,20 @@
 
   <!-- ============ RÉGLAGES ============ -->
   <section id="tab-reglages" class="tab">
-    <form id="settingsForm" class="card">
-      <h2>Le foyer</h2>
-      <div class="row">
-        <label class="field">Prénom 1<input id="sNameA" type="text" maxlength="16"></label>
-        <label class="field">Salaire net / mois<input id="sIncA" type="text" inputmode="decimal"></label>
-      </div>
-      <div class="row">
-        <label class="field">Prénom 2<input id="sNameB" type="text" maxlength="16"></label>
-        <label class="field">Salaire net / mois<input id="sIncB" type="text" inputmode="decimal"></label>
-      </div>
-      <p class="muted small">Primes, commissions, remboursements : saisis-les comme « Revenu exceptionnel ». Ils ne sont pas comptés dans le calcul d'investissement (prudence).</p>
-      <h2>Épargne de précaution</h2>
-      <div class="row">
-        <label class="field">Montant actuel (€)<input id="sSavings" type="text" inputmode="decimal"></label>
-        <label class="field">Objectif (mois de dépenses)<input id="sMonths" type="number" min="1" max="24" step="1"></label>
-      </div>
-      <label class="field">Marge de sécurité gardée sur le compte (% du surplus)<input id="sMargin" type="number" min="0" max="80" step="5"></label>
-      <button type="submit" class="primary">Enregistrer</button>
-    </form>
-    <div class="card">
-      <h2>Charges fixes mensuelles</h2>
+    <div class="card" id="syncCard">
+      <h2>Réunir vos deux téléphones</h2>
+      <p class="muted small">Pour la vue d'ensemble, chaque téléphone doit recevoir les saisies de l'autre : « Envoyer mes données » (WhatsApp…), puis sur l'autre téléphone « Recevoir et fusionner ». Rien n'est compté deux fois.</p>
+      <p class="small" id="syncInfo"></p>
+      <button type="button" id="shareBtn" class="primary">Envoyer mes données</button>
+      <label class="ghost file">Recevoir et fusionner<input id="mergeFile" type="file" accept=".txt,.json,text/plain,application/json"></label>
+    </div>
+    <div class="card" id="fixedCard">
+      <h2>Charges fixes du mois</h2>
+      <p class="muted small">Tout ce qui tombe chaque mois : loyer, crédits, énergie, assurances, téléphone, abonnements… C'est ce qui pèse le plus dans le calcul.</p>
       <ul id="fixedList" class="list"></ul>
       <form id="fixedForm">
         <div class="row">
-          <input id="fLabel" type="text" placeholder="Loyer, assurance, Netflix…" required>
+          <input id="fLabel" type="text" placeholder="Loyer, EDF, Netflix…" required>
           <input id="fAmount" type="text" inputmode="decimal" placeholder="€" required class="short">
         </div>
         <div class="row">
@@ -225,6 +236,21 @@
         </div>
       </form>
     </div>
+    <form id="settingsForm" class="card">
+      <h2>Le foyer</h2>
+      <div class="row">
+        <label class="field">Prénom 1<input id="sNameA" type="text" maxlength="16"></label>
+        <label class="field">Prénom 2<input id="sNameB" type="text" maxlength="16"></label>
+      </div>
+      <label class="field">Ce téléphone est celui de<select id="sMe"></select></label>
+      <h2>Épargne de sécurité</h2>
+      <div class="row">
+        <label class="field">Déjà de côté (€)<input id="sSavings" type="text" inputmode="decimal"></label>
+        <label class="field">Objectif (mois de dépenses)<input id="sMonths" type="number" min="1" max="24" step="1"></label>
+      </div>
+      <label class="field">Garder sur le compte courant pour les imprévus (% de ce qui reste)<input id="sMargin" type="number" min="0" max="80" step="5"></label>
+      <button type="submit" class="primary">Enregistrer</button>
+    </form>
     <div class="card">
       <h2>Catégories de dépenses</h2>
       <div id="catEdit" class="chips"></div>
@@ -234,15 +260,8 @@
       </form>
     </div>
     <div class="card">
-      <h2>Partage entre vos deux téléphones</h2>
-      <p class="muted small">Chacun saisit sur son téléphone. Pour réunir les comptes : « Envoyer mes données » (WhatsApp, mail…), puis sur l'autre téléphone « Recevoir et fusionner ». Rien n'est compté deux fois et les suppressions suivent. Faites-le dans les deux sens, par exemple chaque dimanche.</p>
-      <button type="button" id="shareBtn" class="primary">Envoyer mes données</button>
-      <label class="ghost file">Recevoir et fusionner<input id="mergeFile" type="file" accept=".txt,.json,text/plain,application/json"></label>
-    </div>
-    <div class="card">
       <h2>Sauvegarde</h2>
       <p id="storageStatus" class="small"></p>
-      <p class="muted small">Tout est enregistré dans l'appli à chaque saisie. L'export sert de copie si tu changes de téléphone, ou pour transférer les données d'un téléphone à l'autre.</p>
       <div class="row">
         <button id="exportBtn" class="ghost">Exporter (JSON)</button>
         <button id="exportCsvBtn" class="ghost">Exporter (CSV)</button>
@@ -254,10 +273,10 @@
 </main>
 
 <nav class="tabs">
-  <button data-tab="saisie" class="active">＋<span>Saisie</span></button>
-  <button data-tab="mois">▤<span>Mois</span></button>
-  <button data-tab="eco">✂<span>Économies</span></button>
-  <button data-tab="plan">⌂<span>Objectifs</span></button>
+  <button data-tab="home" class="active">◉<span>Accueil</span></button>
+  <button data-tab="saisie">＋<span>Saisie</span></button>
+  <button data-tab="depenses">▤<span>Dépenses</span></button>
+  <button data-tab="maison">⌂<span>Maison</span></button>
   <button data-tab="reglages">⚙<span>Réglages</span></button>
 </nav>
 

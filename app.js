@@ -38,12 +38,19 @@ const blank = () => ({
   categories: [...DEFAULT_CATS],
   settings: { savings: 0, months: 3, margin: 10 },
   project: blankProject(),
+  me: null,           // à qui appartient ce téléphone : 'a' ou 'b' (jamais fusionné)
+  salaries: {},       // 'AAAA-MM' → { a: net payé, b: net payé } (fiches de paie)
+  done: {},           // 'AAAA-MM' → { cushion, project, invest } virements faits ce mois-là
+  lastMerge: 0,       // dernière fusion reçue sur ce téléphone
   rules: {},          // commerçant → catégorie, appris lors des imports
   deleted: {},        // id supprimé → date (pour propager les suppressions entre téléphones)
-  cfgAt: 0,           // date de la dernière modif. des réglages (le plus récent gagne à la fusion)
+  cfgAt: 0,
+  at: {},             // date de dernière modification par section (people, settings, project, budgets, done) :
+                      // à la fusion, chaque section prend la version modifiée le plus récemment
   lastImport: null,
   updatedAt: 0,
 });
+const CFG_SECTIONS = ['people', 'settings', 'project', 'budgets', 'done'];
 const valid = d => d && typeof d === 'object' && Array.isArray(d.expenses);
 
 // Accepte une sauvegarde v0.1 (une personne) ou v0.2 et renvoie un état v0.2 complet.
@@ -55,8 +62,23 @@ function migrate(d) {
   const people = Array.isArray(d.people) && d.people.length === 2
     ? d.people.map((p, i) => ({ name: String(p?.name || b.people[i].name).slice(0, 16), income: num(p?.income) }))
     : [{ name: 'Moi', income: num(s.income) }, { ...b.people[1] }];
+  const salaries = {};
+  if (d.salaries && typeof d.salaries === 'object') for (const [k, v] of Object.entries(d.salaries)) {
+    if (!/^\d{4}-\d{2}$/.test(k) || !v) continue;
+    const e = {}; for (const w of ['a', 'b']) if (+v[w] > 0) e[w] = +v[w];
+    if (Object.keys(e).length) salaries[k] = e;
+  }
+  // v0.1–0.3 : salaire fixe dans les réglages → devient la fiche de paie du mois en cours
+  if (!Object.keys(salaries).length && people.some(p => p.income > 0)) {
+    const e = {}; people.forEach((p, i) => { if (p.income > 0) e[i ? 'b' : 'a'] = p.income; });
+    salaries[ym(todayISO())] = e;
+  }
   return {
     v: 2,
+    me: d.me === 'a' || d.me === 'b' ? d.me : null,
+    salaries,
+    done: d.done && typeof d.done === 'object' ? d.done : {},
+    lastMerge: d.lastMerge || 0,
     people,
     expenses: d.expenses.filter(e => e && e.date && e.amount > 0).map(e => ({ ...e, id: e.id || uid(), amount: +e.amount, cat: e.cat || 'Divers', note: e.note || '', who: WHO.includes(e.who) ? e.who : 'a' })),
     incomes: (Array.isArray(d.incomes) ? d.incomes : []).filter(i => i && i.date && i.amount > 0).map(i => ({ ...i, id: i.id || uid(), amount: +i.amount, note: i.note || '', who: WHO.includes(i.who) ? i.who : 'a' })),
@@ -68,6 +90,11 @@ function migrate(d) {
     rules: d.rules && typeof d.rules === 'object' ? d.rules : {},
     deleted: d.deleted && typeof d.deleted === 'object' ? d.deleted : {},
     cfgAt: d.cfgAt || 0,
+    at: (() => {
+      const at = {};
+      for (const k of CFG_SECTIONS) at[k] = +((d.at || {})[k]) || (d.at ? 0 : (d.cfgAt || 0));
+      return at;
+    })(),
     lastImport: d.lastImport || null,
     updatedAt: d.updatedAt || 0,
   };
@@ -115,7 +142,7 @@ async function save() {
   if (!ok) toast('⚠ Échec de la sauvegarde');
   renderStorage();
 }
-function saveCfg() { state.cfgAt = Date.now(); return save(); }
+function saveCfg(...sections) { const t = Date.now(); sections.forEach(k => state.at[k] = t); state.cfgAt = t; return save(); }
 const markDeleted = ids => { const t = Date.now(); ids.forEach(id => state.deleted[id] = t); };
 
 let persisted = null;
@@ -145,7 +172,16 @@ function renderStorage() {
 
 /* ---------- Calculs ---------- */
 const whoName = w => w === 'a' ? state.people[0].name : w === 'b' ? state.people[1].name : 'Commun';
-const baseIncome = () => sum(state.people.map(p => p.income));
+const salaryOf = (k, w) => (state.salaries[k] && state.salaries[k][w] > 0) ? state.salaries[k][w] : null;
+// Salaire de référence d'une personne : moyenne de ses 3 dernières fiches de paie saisies.
+function refSalary(w) {
+  const vals = Object.keys(state.salaries).sort().reverse().map(k => salaryOf(k, w)).filter(v => v !== null).slice(0, 3);
+  return vals.length ? sum(vals) / vals.length : 0;
+}
+const baseIncome = () => refSalary('a') + refSalary('b');
+// Salaire d'un mois : la fiche saisie, sinon estimation (référence).
+const monthSalary = (k, w) => { const v = salaryOf(k, w); return v !== null ? { v, est: false } : { v: refSalary(w), est: true }; };
+const monthDone = (k = ym(todayISO())) => state.done[k] || {};
 const monthExpenses = k => state.expenses.filter(e => ym(e.date) === k);
 const monthIncomes = k => state.incomes.filter(i => ym(i.date) === k);
 const fixedTotal = kind => sum(state.fixed.filter(f => !kind || f.kind === kind).map(f => f.amount));
@@ -219,9 +255,10 @@ function plan(extra = 0) {
   const income = baseIncome(), fixed = fixedTotal(), v = avgVariable();
   const surplus = income - fixed - v.value + extra;
   const target = state.settings.months * (fixed + v.value);
-  const cushionGap = Math.max(0, target - state.settings.savings);
+  const dn = monthDone();
+  const cushionGap = Math.max(0, target - (state.settings.savings - (dn.cushion || 0)));
   const proj = project();
-  const apportGap = proj ? Math.max(0, proj.apportTarget - state.project.saved) : 0;
+  const apportGap = proj ? Math.max(0, proj.apportTarget - (state.project.saved - (dn.project || 0))) : 0;
   const now = split(surplus, cushionGap, apportGap);
   let cg = cushionGap, ag = apportGap;
   let mCushion = cg > 0 ? null : 0, mApport = proj ? (ag > 0 ? null : 0) : undefined;
@@ -234,111 +271,214 @@ function plan(extra = 0) {
   }
   return { income, fixed, variable: v.value, basis: v.basis, surplus, target, cushionGap, apportGap, ...now, mCushion, mApport, proj };
 }
-const monthsLabel = m => { const k = shiftMonth(curMonth(), m); return monthName(k); };
+// m = nombre de mois d'épargne à partir de ce mois-ci (1 = ce mois-ci suffit).
+const monthsLabel = m => monthName(shiftMonth(curMonth(), Math.max(0, m - 1)));
 
 /* ---------- Rendu ---------- */
 let opType = 'dep';
 let selectedCat = DEFAULT_CATS[0];
-let selectedWho = 'c';
+let selectedWho = null;      // par défaut : la personne à qui appartient ce téléphone
 let viewMonth = curMonth();
+let viewFilter = 'all';      // Dépenses : 'all' | 'a' | 'b' | 'c'
+let payMonth = null;         // mois de la fiche de paie affichée sur l'accueil
 
+const fixedOf = w => sum(state.fixed.filter(f => f.who === w).map(f => f.amount));
+const extrasOf = (k, w) => sum(monthIncomes(k).filter(i => !w || i.who === w).map(i => i.amount));
+const goTo = target => {
+  const [tab, anchor] = String(target).split('#');
+  showTab(tab);
+  if (anchor && $(anchor)) setTimeout(() => $(anchor).scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+};
+function defaultPayMonth() {
+  const cur = curMonth(), prev = shiftMonth(cur, -1), { day } = monthProgress();
+  return day <= 15 && salaryOf(prev, state.me || 'a') === null ? prev : cur;
+}
+
+/* --- Accueil --- */
+function renderHome() {
+  const [A, B] = state.people, cur = curMonth(), s = state.settings, p = state.project;
+  $('monthLabel').textContent = monthName(cur);
+
+  // Qui utilise ce téléphone ?
+  $('whoCard').style.display = state.me ? 'none' : '';
+  // Tant que le téléphone n'est pas attribué, on n'affiche que la question.
+  document.querySelectorAll('#tab-home > .card:not(#whoCard)').forEach(el => el.style.display = state.me ? '' : 'none');
+  if (!state.me) {
+    if (document.activeElement !== $('wNameA')) $('wNameA').value = A.name === 'Moi' ? '' : A.name;
+    if (document.activeElement !== $('wNameB')) $('wNameB').value = B.name === 'Conjoint(e)' ? '' : B.name;
+    $('wMeA').textContent = $('wNameA').value.trim() || 'Prénom 1';
+    $('wMeB').textContent = $('wNameB').value.trim() || 'Prénom 2';
+  }
+
+  // Fiches de paie
+  if (!payMonth) payMonth = defaultPayMonth();
+  $('payMonth').textContent = monthName(payMonth);
+  $('payLblA').textContent = A.name + (state.me === 'a' ? ' (moi)' : '');
+  $('payLblB').textContent = B.name + (state.me === 'b' ? ' (moi)' : '');
+  if (document.activeElement !== $('payA')) $('payA').value = salaryOf(payMonth, 'a') ?? '';
+  if (document.activeElement !== $('payB')) $('payB').value = salaryOf(payMonth, 'b') ?? '';
+  $('payNext').disabled = payMonth >= cur;
+
+  // Vue d'ensemble du mois en cours
+  const exp = monthExpenses(cur);
+  const rows = WHO.map(w => {
+    const sal = w === 'c' ? null : monthSalary(cur, w);
+    return { w, est: sal ? sal.est : false, earned: (sal ? sal.v : 0) + extrasOf(cur, w), spent: sum(exp.filter(e => e.who === w).map(e => e.amount)) + fixedOf(w) };
+  });
+  const totIn = sum(rows.map(r => r.earned)), totOut = sum(rows.map(r => r.spent)), left = totIn - totOut;
+  $('ovTitle').textContent = `Vue d'ensemble · ${monthName(cur)}`;
+  $('ovTable').innerHTML = '<tr class="head"><td></td><td>Gagné</td><td>Dépensé</td></tr>' + rows.map(r =>
+    `<tr><td>${esc(whoName(r.w))}${r.w === state.me ? ' <small class="muted">(moi)</small>' : ''}</td>` +
+    `<td>${r.w === 'c' ? (r.earned ? fmt0(r.earned) : '—') : r.est ? `<span class="muted">≈ ${fmt0(r.earned)}</span>` : fmt0(r.earned)}</td><td>${fmt0(r.spent)}</td></tr>`).join('') +
+    `<tr class="total"><td>Foyer</td><td>${fmt0(totIn)}</td><td>${fmt0(totOut)}</td></tr>`;
+  $('ovLeft').textContent = fmt0(left);
+  $('ovLeft').className = left < 0 ? 'neg' : 'pos';
+
+  const c = plan(), notes = [];
+  const est = rows.filter(r => r.w !== 'c' && r.est).map(r => whoName(r.w));
+  if (est.length) notes.push(`≈ : salaire estimé tant que la fiche de paie de ${monthName(cur)} n'est pas saisie (${est.join(', ')}).`);
+  const other = state.me === 'a' ? 'b' : state.me === 'b' ? 'a' : null;
+  if (other && !state.expenses.some(e => e.who === other) && !state.lastMerge) notes.push(`Les dépenses de ${whoName(other)} s'ajouteront quand vous réunirez vos deux téléphones (Réglages).`);
+  if (c.income) notes.push(`En moyenne, il vous reste ${fmt0(c.surplus)} par mois, soit ${pct(Math.max(-9.99, c.surplus / c.income))} des salaires.`);
+  $('ovNote').textContent = notes.join(' ');
+
+  // À faire ce mois-ci
+  const dn = monthDone(), items = [];
+  if (!c.income) items.push({ cls: 'info', title: 'Saisir vos fiches de paie', sub: 'Le net payé de chacun, juste au-dessus.' });
+  if (!state.fixed.length) items.push({ cls: 'info', title: 'Ajouter vos charges fixes', sub: 'Loyer, crédits, énergie, assurances, abonnements…', go: 'reglages#fixedCard' });
+  if (!state.expenses.length) items.push({ cls: 'info', title: 'Saisir ou importer vos dépenses', sub: 'Onglet Saisie, ou un relevé bancaire CSV pour aller plus vite.', go: 'saisie' });
+  if (c.income) {
+    if (c.surplus <= 0) items.push({ cls: 'bad', title: `Vous dépensez ${fmt0(-c.surplus)} de plus que vous ne gagnez par mois`, sub: 'Regardez « Où économiser » dans l\'onglet Dépenses.', go: 'depenses' });
+    const step = (key, amt, todo, doneTxt, sub) => { if (amt > 0.5 || dn[key]) items.push({ key, amount: dn[key] || amt, title: dn[key] ? doneTxt(dn[key]) : todo(amt), sub }); };
+    step('cushion', c.toCushion, a => `Mettre ${fmt0(a)} sur l'épargne de sécurité`, a => `${fmt0(a)} mis sur l'épargne de sécurité`, `Sur un livret (Livret A…). Objectif : ${fmt0(c.target)}, soit ${s.months} mois de dépenses.`);
+    step('project', c.toProject, a => `Mettre ${fmt0(a)} de côté pour l'apport maison`, a => `${fmt0(a)} mis de côté pour l'apport`, 'Sur un livret à part, pour ne pas y toucher.');
+    step('invest', c.investable, a => `Investir ${fmt0(a)}`, a => `${fmt0(a)} investis`, 'Ce qui reste une fois la sécurité et l\'apport servis (placements suivis par Vigie).');
+    if (c.marginAmt > 0.5) items.push({ cls: 'info', title: `Garder ${fmt0(c.marginAmt)} sur le compte courant`, sub: 'Pour les imprévus du mois.' });
+  }
+  const ca = catAnalysis();
+  ca.filter(x => x.budget > 0 && (x.spent > x.budget || (x.proj !== null && x.proj > x.budget))).forEach(x => items.push({
+    cls: 'warn', go: 'depenses', title: `${x.cat} : ${fmt0(x.spent)} dépensés sur ${fmt0(x.budget)} prévus`,
+    sub: x.spent > x.budget ? 'Budget dépassé : on lève le pied jusqu\'à la fin du mois.' : `À ce rythme, ≈ ${fmt0(x.proj)} en fin de mois.` }));
+  ca.filter(x => !x.budget && x.avg !== null && x.proj !== null && x.proj > x.avg * 1.15 && x.proj - x.avg >= 20).forEach(x => items.push({
+    cls: 'warn', go: 'depenses', title: `${x.cat} : +${fmt0(x.proj - x.avg)} par rapport à d'habitude`, sub: `Habituellement ${fmt0(x.avg)} par mois, ≈ ${fmt0(x.proj)} à ce rythme.` }));
+  $('todoList').innerHTML = items.length ? items.map(t => {
+    const done = t.key && dn[t.key];
+    const ico = done ? '✓' : t.key ? '→' : (t.cls === 'warn' || t.cls === 'bad') ? '!' : '•';
+    const btn = t.key ? (done ? `<button type="button" class="ghost sm" data-undone="${t.key}">Annuler</button>` : `<button type="button" class="ghost sm" data-done="${t.key}" data-amt="${Math.round(t.amount)}">Fait</button>`)
+      : t.go ? `<button type="button" class="ghost sm" data-go="${t.go}">Voir</button>` : '';
+    return `<li class="${t.cls || ''}${done ? ' done' : ''}"><span class="ico">${ico}</span><div class="l"><b>${t.title}</b><small>${t.sub}</small></div>${btn}</li>`;
+  }).join('') : '<li class="empty">Rien à faire pour l\'instant.</li>';
+
+  // Objectifs
+  const goal = (label, now, target, right, foot) => `<div class="goal"><div class="t"><b>${label}</b><span>${right}</span></div>` +
+    (target > 0 ? `<div class="progress"><div style="width:${clamp(now / target, 0, 1) * 100}%"></div></div>` : '') + `<small class="muted">${foot}</small></div>`;
+  let g = goal('Épargne de sécurité', s.savings, c.target, c.target ? `${fmt0(s.savings)} / ${fmt0(c.target)}` : '',
+    !c.target ? 'Se calcule avec vos charges et dépenses.' : s.savings >= c.target ? '✓ Complète' : c.mCushion ? `Complète en ${monthsLabel(c.mCushion)}` : 'Pas d\'épargne possible au rythme actuel');
+  if (c.proj) g += goal('Apport maison', p.saved, c.proj.apportTarget, `${fmt0(p.saved)} / ${fmt0(c.proj.apportTarget)}`,
+    p.saved >= c.proj.apportTarget ? '✓ Atteint' : c.mApport ? `Prêt en ${monthsLabel(c.mApport)}` : 'Pas atteignable au rythme actuel');
+  else g += `<div class="goal"><div class="t"><b>Apport maison</b><button type="button" class="ghost sm" data-go="maison">Configurer</button></div></div>`;
+  const invested = sum(Object.values(state.done).map(d => d.invest || 0));
+  g += goal('Investissement', 0, 0, `${fmt0(invested)} investis`, c.investable > 0 ? `${fmt0(c.investable)} par mois disponibles` : 'Rien à investir tant que la sécurité' + (c.proj ? ' et l\'apport ne sont pas servis' : ' n\'est pas servie'));
+  $('goals').innerHTML = g;
+
+  // Comment c'est calculé
+  const r = (l, v, cls = '') => `<tr class="${cls}"><td>${l}</td><td class="${v < 0 ? 'neg' : ''}">${fmt0(v)}</td></tr>`;
+  $('calcTable').innerHTML =
+    r('Salaires du foyer', c.income) + r('− Charges fixes', -c.fixed) + r('− Dépenses courantes', -c.variable) +
+    r('= Ce qui reste chaque mois', c.surplus, 'sub') + r('→ Épargne de sécurité', -c.toCushion) +
+    r(`→ Gardé sur le compte (${s.margin} %)`, -c.marginAmt) +
+    (c.proj ? r(`→ Apport maison (${p.share} % du reste)`, -c.toProject) : '') +
+    r('= À investir', c.investable, 'total');
+  $('calcBasis').textContent = `Salaires : moyenne des 3 dernières fiches de paie de chacun. Dépenses courantes : ${c.basis}. L'ordre est volontaire : d'abord la sécurité, puis l'apport, puis l'investissement.`;
+}
+
+/* --- Saisie --- */
 function renderSaisieForm() {
+  if (!selectedWho) selectedWho = state.me || 'c';
   document.querySelectorAll('#typeSeg button').forEach(b => b.classList.toggle('on', b.dataset.type === opType));
   $('catBlock').style.display = opType === 'dep' ? '' : 'none';
-  $('opSubmit').textContent = opType === 'dep' ? 'Ajouter la dépense' : 'Ajouter le revenu';
-  $('note').placeholder = opType === 'dep' ? 'Note (facultatif)' : 'Prime, commission, remboursement…';
+  $('opSubmit').textContent = opType === 'dep' ? 'Ajouter la dépense' : 'Ajouter la rentrée';
+  $('whoLabel').textContent = opType === 'dep' ? 'Payé par' : 'Reçu par';
+  $('note').placeholder = opType === 'dep' ? 'Note (facultatif)' : 'Prime, remboursement, vente…';
   $('whoSeg').innerHTML = WHO.map(w => `<button type="button" data-who="${w}" class="${w === selectedWho ? 'on' : ''}">${esc(whoName(w))}</button>`).join('');
   $('catChips').innerHTML = state.categories.map(c => `<button type="button" class="chip${c === selectedCat ? ' on' : ''}" data-cat="${esc(c)}">${esc(c)}</button>`).join('');
   $('catEdit').innerHTML = state.categories.map(c => `<span class="chip">${esc(c)}<a class="x" data-delcat="${esc(c)}">×</a></span>`).join('');
-  $('fWho').innerHTML = WHO.map(w => `<option value="${w}"${w === 'c' ? ' selected' : ''}>${w === 'c' ? 'Commun' : 'Payé par ' + esc(whoName(w))}</option>`).join('');
+  const fw = $('fWho').value || 'c';
+  $('fWho').innerHTML = WHO.map(w => `<option value="${w}">${w === 'c' ? 'Commun' : 'Payé par ' + esc(whoName(w))}</option>`).join('');
+  $('fWho').value = fw;
 }
 
 function opHTML(o) {
   const d = new Date(o.date + 'T00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
   const inc = o.kind === 'inc';
-  return `<li><div class="l"><b>${inc ? 'Revenu' : esc(o.cat)}</b><small>${d} · ${esc(whoName(o.who))}${o.note ? ' · ' + esc(o.note) : ''}</small></div>
+  return `<li><div class="l"><b>${inc ? 'Rentrée' : esc(o.cat)}${o.note ? ` <span class="note">· ${esc(o.note)}</span>` : ''}</b><small>${d} · ${esc(whoName(o.who))}</small></div>
     <div class="r"><span class="${inc ? 'pos' : ''}">${inc ? '+' : ''}${fmt(o.amount)}</span><button class="del" data-del="${o.id}" data-k="${inc ? 'inc' : 'exp'}" aria-label="Supprimer">×</button></div></li>`;
 }
 const opsOf = (exp, inc) => [...exp.map(e => ({ ...e, kind: 'exp' })), ...inc.map(i => ({ ...i, kind: 'inc' }))]
   .sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
 
 function renderSaisie() {
-  const cur = curMonth();
-  $('monthLabel').textContent = monthName(cur);
-  const recent = opsOf(state.expenses, state.incomes).slice(0, 10);
-  $('recentList').innerHTML = recent.length ? recent.map(opHTML).join('') : '<li class="empty">Aucune opération pour l\'instant. Commence par Réglages : salaires et charges fixes.</li>';
-  $('monthTotal').textContent = 'Dépensé ce mois : ' + fmt(sum(monthExpenses(cur).map(e => e.amount)));
+  const cur = curMonth(), mine = x => !state.me || x.who === state.me || x.who === 'c';
+  const recent = opsOf(state.expenses.filter(mine), state.incomes.filter(mine)).slice(0, 10);
+  $('recentList').innerHTML = recent.length ? recent.map(opHTML).join('') : '<li class="empty">Aucune saisie pour l\'instant.</li>';
+  const myMonth = sum(monthExpenses(cur).filter(e => state.me ? e.who === state.me : true).map(e => e.amount));
+  $('monthTotal').textContent = `${state.me ? whoName(state.me) : 'Ce mois'} : ${fmt0(myMonth)} ce mois`;
 }
 
-function renderMois() {
-  const exp = monthExpenses(viewMonth), inc = monthIncomes(viewMonth);
-  const v = sum(exp.map(e => e.amount)), f = fixedTotal(), extra = sum(inc.map(i => i.amount));
-  const income = baseIncome() + extra, left = income - f - v;
+/* --- Dépenses --- */
+function renderDepenses() {
+  $('filterSeg').innerHTML = [['all', 'Tout'], ['a', whoName('a')], ['b', whoName('b')], ['c', 'Commun']]
+    .map(([k, l]) => `<button type="button" data-filter="${k}" class="${k === viewFilter ? 'on' : ''}">${esc(l)}</button>`).join('');
+  const f = viewFilter, keep = x => f === 'all' || x.who === f;
+  const exp = monthExpenses(viewMonth).filter(keep), inc = monthIncomes(viewMonth).filter(keep);
+  const sal = w => monthSalary(viewMonth, w).v;
+  const income = (f === 'all' ? sal('a') + sal('b') : f === 'c' ? 0 : sal(f)) + sum(inc.map(i => i.amount));
+  const fixed = f === 'all' ? fixedTotal() : fixedOf(f), v = sum(exp.map(e => e.amount)), left = income - fixed - v;
   $('viewMonthLabel').textContent = monthName(viewMonth);
-  $('kIncome').textContent = fmt(income); $('kFixed').textContent = fmt(f); $('kVar').textContent = fmt(v);
-  $('kLeft').textContent = fmt(left); $('kLeft').className = left < 0 ? 'neg' : 'pos';
-
-  const rows = WHO.map(w => {
-    const rev = (w === 'c' ? 0 : state.people[w === 'a' ? 0 : 1].income) + sum(inc.filter(i => i.who === w).map(i => i.amount));
-    const dep = sum(exp.filter(e => e.who === w).map(e => e.amount)) + sum(state.fixed.filter(x => x.who === w).map(x => x.amount));
-    return `<tr><td>${esc(whoName(w))}</td><td>${rev ? fmt(rev) : '—'}</td><td>${fmt(dep)}</td></tr>`;
-  });
-  $('whoTable').innerHTML = '<tr class="head"><td></td><td>Revenus</td><td>Payé (fixes + dépenses)</td></tr>' + rows.join('');
+  $('kIncome').textContent = fmt0(income); $('kFixed').textContent = fmt0(fixed); $('kVar').textContent = fmt0(v);
+  $('kLeft').textContent = fmt0(left); $('kLeft').className = left < 0 ? 'neg' : 'pos';
 
   const byCat = {};
   exp.forEach(e => byCat[e.cat] = (byCat[e.cat] || 0) + e.amount);
   const cats = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
   const max = cats.length ? cats[0][1] : 1;
   $('catBreakdown').innerHTML = cats.length ? cats.map(([c, a]) => {
-    const bud = +state.budgets[c] || 0, over = bud && a > bud;
-    return `<li><div class="t"><span>${esc(c)}</span><span class="${over ? 'neg' : ''}">${fmt(a)}${bud ? ' / ' + fmt0(bud) : ''} · ${Math.round(a / v * 100)} %</span></div><div class="b"><div class="${over ? 'over' : ''}" style="width:${a / max * 100}%"></div></div></li>`;
-  }).join('') : '<li class="empty">Rien sur ce mois.</li>';
+    const bud = f === 'all' ? (+state.budgets[c] || 0) : 0, over = bud && a > bud;
+    return `<li><div class="t"><span>${esc(c)}</span><span class="${over ? 'neg' : ''}">${fmt0(a)}${bud ? ' / ' + fmt0(bud) : ''}</span></div><div class="b"><div class="${over ? 'over' : ''}" style="width:${a / max * 100}%"></div></div></li>`;
+  }).join('') : '<li class="empty">Aucune dépense sur ce mois.</li>';
   const ops = opsOf(exp, inc);
-  $('monthList').innerHTML = ops.length ? ops.map(opHTML).join('') : '<li class="empty">Aucune opération.</li>';
-}
+  $('monthList').innerHTML = ops.length ? ops.map(opHTML).join('') : '<li class="empty">Rien sur ce mois.</li>';
 
-function renderEco() {
-  const pl = plan();
-  const rate = pl.income > 0 ? pl.surplus / pl.income : null;
-  $('saveRate').textContent = rate === null ? '—' : pct(rate);
-  $('saveRate').className = 'big' + (rate !== null && rate < 0 ? ' negbig' : '');
-  $('saveRateMsg').textContent = rate === null ? 'Renseigne les salaires dans Réglages.'
-    : rate < 0 ? `Vous dépensez ${fmt0(-pl.surplus)} de plus que vous ne gagnez chaque mois : c'est la priorité n°1.`
-    : rate < 0.1 ? `${fmt0(pl.surplus)} mis de côté par mois. Sous 10 %, l'apport immobilier prendra très longtemps : il faut trouver des leviers ci-dessous.`
-    : rate < 0.2 ? `${fmt0(pl.surplus)} mis de côté par mois. Correct ; viser 20 % accélère nettement l'apport.`
-    : `${fmt0(pl.surplus)} mis de côté par mois. Très bon rythme.`;
-
-  // Leviers : catégories variables les plus lourdes + abonnements.
-  const p = +$('ecoPct').value / 100;
+  // Où économiser (foyer)
+  const pl = plan(), p = +$('ecoPct').value / 100;
   $('ecoPctLbl').textContent = pct(p);
-  const ca = catAnalysis().filter(c => c.usual > 0).sort((a, b) => b.usual - a.usual).slice(0, 5);
+  const all = catAnalysis();
+  const ca = all.filter(c => c.usual > 0).sort((a, b) => b.usual - a.usual).slice(0, 5);
   const subs = fixedTotal('abonnement');
-  const levers = ca.map(c => ({ label: c.cat, base: c.usual, gain: c.usual * p, hint: c.avg !== null ? 'moyenne habituelle' : 'estimation du mois' }));
-  if (subs > 0) levers.push({ label: 'Abonnements', base: subs, gain: subs * p, hint: 'charges fixes' });
+  const levers = ca.map(c => ({ label: c.cat, base: c.usual, gain: c.usual * p }));
+  if (subs > 0) levers.push({ label: 'Abonnements', base: subs, gain: subs * p });
   levers.sort((a, b) => b.gain - a.gain);
   const totalGain = sum(levers.map(l => l.gain));
   $('leverList').innerHTML = levers.length ? levers.map(l =>
-    `<li><div class="l"><b>${esc(l.label)}</b><small>${fmt0(l.base)}/mois · ${l.hint}</small></div><div class="r"><span class="pos">+${fmt0(l.gain)}/mois<br><small>${fmt0(l.gain * 12)}/an</small></span></div></li>`).join('') +
-    `<li><div class="l"><b>Total si tout est réduit de ${pct(p)}</b></div><div class="r"><b class="pos">+${fmt0(totalGain)}/mois · ${fmt0(totalGain * 12)}/an</b></div></li>`
-    : '<li class="empty">Saisis quelques dépenses pour voir où agir.</li>';
+    `<li><div class="l"><b>${esc(l.label)}</b><small>${fmt0(l.base)} par mois</small></div><div class="r"><span class="pos">+${fmt0(l.gain)}/mois<small>${fmt0(l.gain * 12)}/an</small></span></div></li>`).join('') +
+    `<li><div class="l"><b>Total</b></div><div class="r"><b class="pos">+${fmt0(totalGain)}/mois · ${fmt0(totalGain * 12)}/an</b></div></li>`
+    : '<li class="empty">Saisissez quelques dépenses pour voir où agir.</li>';
   let msg = '';
   if (levers.length && pl.proj && pl.mApport) {
     const pl2 = plan(totalGain);
-    if (pl2.mApport !== null && pl2.mApport < pl.mApport) msg = `➜ Apport immobilier atteint ${duration(pl.mApport - pl2.mApport)} plus tôt (${monthsLabel(pl2.mApport)} au lieu de ${monthsLabel(pl.mApport)}).`;
+    if (pl2.mApport !== null && pl2.mApport < pl.mApport) msg = `➜ L'apport maison serait prêt ${duration(pl.mApport - pl2.mApport)} plus tôt (${monthsLabel(pl2.mApport)} au lieu de ${monthsLabel(pl.mApport)}).`;
   } else if (levers.length && pl.proj && pl.mApport === null && pl.apportGap > 0) {
     const pl2 = plan(totalGain);
-    if (pl2.mApport) msg = `➜ Avec ces économies, l'apport devient atteignable : ${monthsLabel(pl2.mApport)}.`;
+    if (pl2.mApport) msg = `➜ Avec ces économies, l'apport maison devient atteignable : ${monthsLabel(pl2.mApport)}.`;
   }
   $('leverMsg').textContent = msg;
 
-  // Budgets
-  const all = catAnalysis();
   const withB = all.filter(c => c.budget > 0);
   $('budgetList').innerHTML = withB.length ? withB.map(c => {
     const r = c.spent / c.budget, over = c.spent > c.budget, risk = !over && c.proj !== null && c.proj > c.budget;
-    return `<li><div class="t"><span>${esc(c.cat)}</span><span class="${over ? 'neg' : risk ? 'warn' : ''}">${fmt0(c.spent)} / ${fmt0(c.budget)}${c.proj !== null ? ` · fin de mois ≈ ${fmt0(c.proj)}` : ''}</span></div>` +
+    return `<li><div class="t"><span>${esc(c.cat)}</span><span class="${over ? 'neg' : risk ? 'warn' : ''}">${fmt0(c.spent)} / ${fmt0(c.budget)}</span></div>` +
       `<div class="b"><div class="${over ? 'over' : risk ? 'risk' : 'okb'}" style="width:${clamp(r, 0, 1) * 100}%"></div></div></li>`;
-  }).join('') : '<li class="empty">Aucun budget. Fixe un plafond sur les catégories qui pèsent le plus (courses, restaurant, shopping…).</li>';
+  }).join('') : '';
   const sel = $('bCat').value;
   $('bCat').innerHTML = state.categories.map(c => {
     const a = all.find(x => x.cat === c), sug = a && a.avg ? ` (habituel ${fmt0(a.avg)})` : '';
@@ -346,82 +486,48 @@ function renderEco() {
   }).join('');
   if (sel && state.categories.includes(sel)) $('bCat').value = sel;
 
-  // Dérives
-  const { day } = monthProgress();
-  const drifts = all.filter(c => c.avg !== null && c.proj !== null && c.proj > c.avg * 1.15 && c.proj - c.avg >= 20).sort((a, b) => (b.proj - b.avg) - (a.proj - a.avg));
-  $('driftList').innerHTML = drifts.length ? drifts.map(c =>
-    `<li><div class="l"><b>${esc(c.cat)}</b><small>habituel ${fmt0(c.avg)} · fin de mois ≈ ${fmt0(c.proj)}</small></div><div class="r neg">+${fmt0(c.proj - c.avg)}</div></li>`).join('')
-    : `<li class="empty">${!historyMonths().length ? 'Il faut au moins un mois complet de dépenses pour comparer.' : day < 10 ? 'Analyse disponible à partir du 10 du mois.' : 'Rien d\'anormal ce mois-ci.'}</li>`;
-
-  // Abonnements
-  const sl = state.fixed.filter(f => f.kind === 'abonnement').sort((a, b) => b.amount - a.amount);
-  $('subList').innerHTML = sl.length ? sl.map(f => `<li><div class="l"><b>${esc(f.label)}</b><small>${esc(whoName(f.who))}</small></div><div class="r"><span>${fmt(f.amount)}<small>${fmt0(f.amount * 12)}/an</small></span></div></li>`).join('') +
+  const sl = state.fixed.filter(x => x.kind === 'abonnement').sort((a, b) => b.amount - a.amount);
+  $('subList').innerHTML = sl.length ? sl.map(x => `<li><div class="l"><b>${esc(x.label)}</b><small>${esc(whoName(x.who))}</small></div><div class="r"><span>${fmt(x.amount)}<small>${fmt0(x.amount * 12)}/an</small></span></div></li>`).join('') +
     `<li><div class="l"><b>Total</b></div><div class="r"><b>${fmt(subs)}/mois · ${fmt0(subs * 12)}/an</b></div></li>`
-    : '<li class="empty">Aucun abonnement déclaré. Ajoute-les dans Réglages → Charges fixes (type « Abonnement ») : c\'est souvent le premier gisement.</li>';
+    : '<li class="empty">Aucun abonnement déclaré (Réglages → Charges fixes, type « Abonnement »).</li>';
 }
 
-function renderPlan() {
-  const c = plan(), s = state.settings, p = state.project, pr = c.proj;
-  $('investable').textContent = fmt0(c.investable);
-  let msg;
-  if (!c.income) msg = 'Renseigne les salaires dans Réglages pour lancer le calcul.';
-  else if (c.surplus <= 0) msg = 'Les dépenses dépassent les revenus : rien à investir. Va voir l\'onglet Économies.';
-  else if (c.cushionGap > 0 && c.investable <= 0 && c.toProject <= 0) msg = `Priorité au matelas de sécurité : ${fmt0(c.toCushion)} à mettre de côté ce mois-ci.`;
-  else if (pr && c.apportGap > 0) msg = `Après ${c.toCushion > 0 ? fmt0(c.toCushion) + ' vers la précaution et ' : ''}${fmt0(c.toProject)} vers l'apport immobilier.`;
-  else if (c.cushionGap > 0) msg = `Après ${fmt0(c.toCushion)} versés au matelas de sécurité.`;
-  else msg = 'Sécurité en place' + (pr ? ' et apport constitué' : '') + ' : ce montant peut aller sur les placements suivis par Vigie.';
-  $('investMsg').textContent = msg;
-
-  const r = (l, v, cls = '') => `<tr class="${cls}"><td>${l}</td><td class="${v < 0 ? 'neg' : ''}">${fmt0(v)}</td></tr>`;
-  $('calcTable').innerHTML =
-    r('Salaires nets du foyer', c.income) + r('− Charges fixes', -c.fixed) + r('− Dépenses variables', -c.variable) +
-    r('= Surplus mensuel', c.surplus, 'sub') + r('→ Épargne de précaution', -c.toCushion) +
-    r(`→ Marge gardée sur le compte (${s.margin} %)`, -c.marginAmt) +
-    (pr ? r(`→ Apport immobilier (${p.share} % du reste)`, -c.toProject) : '') +
-    r('= Investissable', c.investable, 'total');
-  $('calcBasis').textContent = `Dépenses variables : ${c.basis}.`;
-
-  const cp = c.target > 0 ? Math.min(100, s.savings / c.target * 100) : 0;
-  $('cushionBar').style.width = cp + '%';
-  $('cushionTxt').textContent = `${fmt0(s.savings)} sur ${fmt0(c.target)} (${s.months} mois de dépenses) · ${Math.round(cp)} %` +
-    (c.cushionGap > 0 ? (c.mCushion ? ` · complet en ${monthsLabel(c.mCushion)}` : ' · aucun surplus pour le remplir') : ' · ✓ complet');
-
-  // Projet immobilier
+/* --- Maison --- */
+function renderMaison() {
+  const c = plan(), p = state.project, pr = c.proj;
   $('projectOff').style.display = p.enabled ? 'none' : '';
-  if (!pr) { $('projectRes').innerHTML = p.enabled ? '<p class="muted small">Indique le prix du bien dans les paramètres.</p>' : ''; }
-  else {
-    const ap = pr.apportTarget > 0 ? clamp(p.saved / pr.apportTarget, 0, 1) : 1;
-    const ok = pr.ratio !== null && pr.ratio <= HCSF_MAX;
-    const yearsKo = p.years > pr.yearsMax;
-    const when = c.apportGap <= 0 ? '✓ Apport visé atteint' : c.mApport ? `Apport atteint en <b>${monthsLabel(c.mApport)}</b> (dans ${duration(c.mApport)})` : '⚠ Au rythme actuel, l\'apport n\'est jamais atteint : il faut dégager du surplus.';
-    const row = (l, v, cls = '') => `<tr class="${cls}"><td>${l}</td><td>${v}</td></tr>`;
-    $('projectRes').innerHTML = `
-      <p class="small">Apport : ${fmt0(p.saved)} sur ${fmt0(pr.apportTarget)}</p>
-      <div class="progress"><div style="width:${ap * 100}%"></div></div>
-      <p class="small">${when}</p>
-      <div class="${ok && !yearsKo ? 'okbox' : 'warnbox'}">
-        Endettement : <b>${pr.ratio === null ? '—' : pct(pr.ratio, 1)}</b> (max 35 %)${pr.credits ? ` dont crédits en cours ${fmt0(pr.credits)}` : ''}<br>
-        ${pr.ratio === null ? 'Renseigne les salaires.' : ok ? 'La banque peut suivre sur ce critère.' : `Trop élevé : mensualité max ${fmt0(pr.maxMens)}, soit un bien jusqu'à ≈ ${fmt0(pr.priceTarget)} avec l'apport visé.`}
-        ${yearsKo ? `<br>⚠ Durée limitée à ${pr.yearsMax} ans par les règles bancaires.` : ''}
-      </div>
-      <table class="calc">
-        ${row('Prix du bien', fmt0(p.price))}
-        ${row(`Frais de notaire (≈ ${pct(pr.notRate, 1)})`, fmt0(pr.notaire))}
-        ${p.works ? row('Travaux', fmt0(p.works)) : ''}
-        ${row('Coût total', fmt0(pr.total), 'sub')}
-        ${row(`Apport visé (frais + ${p.apportPct} %)`, fmt0(pr.apportTarget))}
-        ${row('Montant à emprunter', fmt0(pr.loan))}
-        ${row(`Mensualité (${p.years} ans à ${p.rate.toLocaleString('fr-FR')} %)`, fmt0(pr.mens), 'total')}
-        ${row('dont assurance', fmt0(pr.insM))}
-        ${row('Coût du crédit (intérêts + assurance)', fmt0(pr.cost))}
-        ${row('Reste à vivre après achat', `<span class="${pr.resteApres < 0 ? 'neg' : ''}">${fmt0(pr.resteApres)}/mois</span>`)}
-      </table>
-      <p class="muted small">Capacité max (35 %) : emprunt ≈ ${fmt0(pr.maxLoan)} · bien jusqu'à ≈ ${fmt0(pr.priceNow)} avec l'apport actuel, ≈ ${fmt0(pr.priceTarget)} avec l'apport visé. ${pr.loyer ? `Le loyer actuel (${fmt0(pr.loyer)}) est remplacé par la mensualité dans le reste à vivre.` : 'Déclare ton loyer (type « Loyer ») pour un reste à vivre juste.'} Hors frais de garantie et de dossier (≈ 1 à 2 % de l'emprunt).</p>`;
-  }
-  $('investTxt').textContent = c.investable > 0
-    ? `${fmt0(c.investable)} par mois disponibles pour investir, soit ${fmt0(c.investable * 12)} par an. C'est ce montant (et lui seul) qui part vers les placements suivis par Vigie.`
-    : pr && c.apportGap > 0 && p.share >= 100 ? 'Tout le surplus va à l\'apport (réglage 100 %). Baisse la part vers l\'apport si tu veux investir un peu en parallèle.'
-    : 'Rien à investir tant que la précaution' + (pr ? ' et l\'apport ne sont pas' : ' n\'est pas') + ' assurés.';
+  if (!pr) { $('projectRes').innerHTML = p.enabled ? '<p class="muted small">Indiquez le prix du bien dans « Modifier le projet ».</p>' : ''; return; }
+  const ap = pr.apportTarget > 0 ? clamp(p.saved / pr.apportTarget, 0, 1) : 1;
+  const ok = pr.ratio !== null && pr.ratio <= HCSF_MAX, yearsKo = p.years > pr.yearsMax;
+  const when = p.saved >= pr.apportTarget ? '✓ Apport atteint' : c.mApport ? `Apport prêt en <b>${monthsLabel(c.mApport)}</b>` : '⚠ Au rythme actuel, l\'apport n\'est pas atteignable : il faut dépenser moins.';
+  const row = (l, v, cls = '') => `<tr class="${cls}"><td>${l}</td><td>${v}</td></tr>`;
+  $('projectRes').innerHTML = `
+    <div class="kpis two">
+      <div><small>Mensualité</small><b>${fmt0(pr.mens)}</b></div>
+      <div><small>Endettement</small><b class="${ok ? 'pos' : 'neg'}">${pr.ratio === null ? '—' : pct(pr.ratio, 1)}</b></div>
+    </div>
+    <p class="small">Apport : ${fmt0(p.saved)} sur ${fmt0(pr.apportTarget)}</p>
+    <div class="progress"><div style="width:${ap * 100}%"></div></div>
+    <p class="small">${when}</p>
+    <div class="${ok && !yearsKo ? 'okbox' : 'warnbox'}">
+      ${pr.ratio === null ? 'Saisissez les fiches de paie pour calculer l\'endettement.' : ok ? 'La banque peut suivre : moins de 35 % des salaires partent en crédits.' : `Trop juste pour la banque : mensualité max ${fmt0(pr.maxMens)}, soit un bien jusqu'à ≈ ${fmt0(pr.priceTarget)}.`}
+      ${yearsKo ? `<br>⚠ Durée limitée à ${pr.yearsMax} ans par les règles bancaires.` : ''}
+    </div>
+    <details><summary>Le détail</summary>
+    <table class="calc">
+      ${row('Prix du bien', fmt0(p.price))}
+      ${row(`Frais de notaire (≈ ${pct(pr.notRate, 1)})`, fmt0(pr.notaire))}
+      ${p.works ? row('Travaux', fmt0(p.works)) : ''}
+      ${row('Coût total', fmt0(pr.total), 'sub')}
+      ${row(`Apport visé (frais + ${p.apportPct} %)`, fmt0(pr.apportTarget))}
+      ${row('À emprunter', fmt0(pr.loan))}
+      ${row(`Mensualité (${p.years} ans à ${p.rate.toLocaleString('fr-FR')} %)`, fmt0(pr.mens), 'total')}
+      ${row('dont assurance', fmt0(pr.insM))}
+      ${row('Coût du crédit', fmt0(pr.cost))}
+      ${row('Reste pour vivre après achat', `<span class="${pr.resteApres < 0 ? 'neg' : ''}">${fmt0(pr.resteApres)}/mois</span>`)}
+    </table>
+    <p class="muted small">Maximum possible (35 %) : emprunt ≈ ${fmt0(pr.maxLoan)}, bien jusqu'à ≈ ${fmt0(pr.priceTarget)} avec l'apport visé. ${pr.loyer ? `Le loyer actuel (${fmt0(pr.loyer)}) est remplacé par la mensualité.` : 'Déclarez votre loyer (type « Loyer ») pour un calcul juste.'} Hors frais de garantie et de dossier (≈ 1 à 2 % de l'emprunt).</p>
+    </details>`;
 }
 
 function fillProjectForm() {
@@ -431,21 +537,25 @@ function fillProjectForm() {
   $('pRate').value = String(p.rate).replace('.', ','); $('pYears').value = p.years; $('pIns').value = String(p.ins).replace('.', ',');
 }
 
+/* --- Réglages --- */
 function renderReglages() {
   const s = state.settings, [A, B] = state.people;
-  $('sNameA').value = A.name; $('sIncA').value = A.income || ''; $('sNameB').value = B.name; $('sIncB').value = B.income || '';
+  $('sNameA').value = A.name; $('sNameB').value = B.name;
+  $('sMe').innerHTML = `<option value="">—</option><option value="a">${esc(A.name)}</option><option value="b">${esc(B.name)}</option>`;
+  $('sMe').value = state.me || '';
   $('sSavings').value = s.savings || ''; $('sMonths').value = s.months; $('sMargin').value = s.margin;
   const fl = [...state.fixed].sort((a, b) => b.amount - a.amount);
   $('fixedList').innerHTML = fl.length ? fl.map(f =>
     `<li><div class="l"><b>${esc(f.label)}</b><small><span class="badge ${f.kind}">${KINDS[f.kind]}</span> ${esc(whoName(f.who))}</small></div><div class="r">${fmt(f.amount)}<button class="del" data-delfixed="${f.id}" aria-label="Supprimer">×</button></div></li>`).join('') +
     `<li><div class="l"><b>Total</b></div><div class="r"><b>${fmt(fixedTotal())}</b></div></li>`
-    : '<li class="empty">Aucune charge fixe. Loyer, énergie, assurances, téléphone, abonnements, crédits…</li>';
+    : '<li class="empty">Aucune charge fixe pour l\'instant.</li>';
+  $('syncInfo').textContent = state.lastMerge ? `Dernière fusion : ${new Date(state.lastMerge).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}.` : 'Pas encore de fusion sur ce téléphone.';
   fillProjectForm();
 }
 
-function render() { renderSaisieForm(); renderSaisie(); renderMois(); renderEco(); renderPlan(); renderReglages(); renderStorage(); }
+function render() { renderHome(); renderSaisieForm(); renderSaisie(); renderDepenses(); renderMaison(); renderReglages(); renderStorage(); }
 
-function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('show'), 1800); }
+function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('show'), 2000); }
 
 /* ---------- Événements ---------- */
 function showTab(name) {
@@ -457,10 +567,26 @@ document.querySelector('.tabs').addEventListener('click', e => {
   const b = e.target.closest('button[data-tab]'); if (b) showTab(b.dataset.tab);
 });
 
+// Accueil
+['wNameA', 'wNameB'].forEach(id => $(id).addEventListener('input', () => {
+  $('wMeA').textContent = $('wNameA').value.trim() || 'Prénom 1';
+  $('wMeB').textContent = $('wNameB').value.trim() || 'Prénom 2';
+}));
+$('payPrev').onclick = () => { payMonth = shiftMonth(payMonth, -1); renderHome(); };
+$('payNext').onclick = () => { if (payMonth < curMonth()) { payMonth = shiftMonth(payMonth, 1); renderHome(); } };
+$('payForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const a = Math.max(0, parseNum($('payA').value)), b = Math.max(0, parseNum($('payB').value));
+  const entry = {}; if (a > 0) entry.a = a; if (b > 0) entry.b = b;
+  if (Object.keys(entry).length) state.salaries[payMonth] = entry; else delete state.salaries[payMonth];
+  document.activeElement && document.activeElement.blur();
+  save(); render(); toast(`Salaires de ${monthName(payMonth)} enregistrés`);
+});
+
+// Saisie
 $('typeSeg').addEventListener('click', e => { const b = e.target.closest('[data-type]'); if (b) { opType = b.dataset.type; renderSaisieForm(); } });
 $('whoSeg').addEventListener('click', e => { const b = e.target.closest('[data-who]'); if (b) { selectedWho = b.dataset.who; renderSaisieForm(); } });
 $('catChips').addEventListener('click', e => { const b = e.target.closest('[data-cat]'); if (b) { selectedCat = b.dataset.cat; renderSaisieForm(); } });
-
 $('opForm').addEventListener('submit', e => {
   e.preventDefault();
   const amount = parseNum($('amount').value);
@@ -469,47 +595,72 @@ $('opForm').addEventListener('submit', e => {
   if (opType === 'dep') state.expenses.push({ ...base, cat: selectedCat });
   else state.incomes.push(base);
   save(); $('amount').value = ''; $('note').value = ''; render();
-  toast(opType === 'dep' ? `${fmt(amount)} · ${selectedCat}` : `+${fmt(amount)} · revenu`);
+  toast(opType === 'dep' ? `${fmt(amount)} · ${selectedCat}` : `+${fmt(amount)}`);
 });
 
+// Dépenses
+$('filterSeg').addEventListener('click', e => { const b = e.target.closest('[data-filter]'); if (b) { viewFilter = b.dataset.filter; renderDepenses(); } });
+$('prevMonth').onclick = () => { viewMonth = shiftMonth(viewMonth, -1); renderDepenses(); };
+$('nextMonth').onclick = () => { viewMonth = shiftMonth(viewMonth, 1); renderDepenses(); };
+$('ecoPct').addEventListener('input', renderDepenses);
+
+// Clics délégués : suppressions, « Fait », navigation, choix du téléphone
 document.addEventListener('click', e => {
-  const t = e.target;
-  if (t.dataset.del) {
+  const t = e.target.closest('button, a');
+  if (!t) return;
+  const d = t.dataset, cur = curMonth();
+  if (d.del) {
     if (!confirm('Supprimer cette opération ?')) return;
-    markDeleted([t.dataset.del]);
-    if (t.dataset.k === 'inc') state.incomes = state.incomes.filter(x => x.id !== t.dataset.del);
-    else state.expenses = state.expenses.filter(x => x.id !== t.dataset.del);
+    markDeleted([d.del]);
+    if (d.k === 'inc') state.incomes = state.incomes.filter(x => x.id !== d.del);
+    else state.expenses = state.expenses.filter(x => x.id !== d.del);
     save(); render();
-  } else if (t.dataset.delfixed) {
-    markDeleted([t.dataset.delfixed]);
-    state.fixed = state.fixed.filter(x => x.id !== t.dataset.delfixed); save(); render();
-  } else if (t.dataset.delcat) {
+  } else if (d.delfixed) {
+    markDeleted([d.delfixed]);
+    state.fixed = state.fixed.filter(x => x.id !== d.delfixed); save(); render();
+  } else if (d.delcat) {
     if (state.categories.length <= 1) return toast('Il faut au moins une catégorie');
-    state.categories = state.categories.filter(c => c !== t.dataset.delcat);
-    delete state.budgets[t.dataset.delcat];
-    if (selectedCat === t.dataset.delcat) selectedCat = state.categories[0];
+    state.categories = state.categories.filter(c => c !== d.delcat);
+    delete state.budgets[d.delcat];
+    if (selectedCat === d.delcat) selectedCat = state.categories[0];
     save(); render();
+  } else if (d.done) {
+    const amt = Math.max(0, +d.amt || 0);
+    state.done[cur] = { ...(state.done[cur] || {}), [d.done]: amt };
+    if (d.done === 'cushion') state.settings.savings += amt;
+    if (d.done === 'project') state.project.saved += amt;
+    saveCfg('done', 'settings', 'project'); render(); toast('C\'est noté 👍');
+  } else if (d.undone) {
+    const dn = state.done[cur] || {}, amt = dn[d.undone] || 0;
+    if (d.undone === 'cushion') state.settings.savings = Math.max(0, state.settings.savings - amt);
+    if (d.undone === 'project') state.project.saved = Math.max(0, state.project.saved - amt);
+    delete dn[d.undone];
+    if (!Object.keys(dn).length) delete state.done[cur];
+    saveCfg('done', 'settings', 'project'); render();
+  } else if (d.go) {
+    goTo(d.go);
+  } else if (d.setme) {
+    const nA = $('wNameA').value.trim(), nB = $('wNameB').value.trim();
+    if (!nA || !nB) return toast('Indiquez vos deux prénoms');
+    state.people[0].name = nA; state.people[1].name = nB;
+    state.me = d.setme; selectedWho = d.setme;
+    saveCfg('people'); render(); toast(`Ce téléphone est celui de ${whoName(d.setme)}`);
   }
 });
 
-$('prevMonth').onclick = () => { viewMonth = shiftMonth(viewMonth, -1); renderMois(); };
-$('nextMonth').onclick = () => { viewMonth = shiftMonth(viewMonth, 1); renderMois(); };
-$('ecoPct').addEventListener('input', renderEco);
-
+// Réglages
 $('settingsForm').addEventListener('submit', e => {
   e.preventDefault();
-  state.people = [
-    { name: $('sNameA').value.trim() || 'Moi', income: Math.max(0, parseNum($('sIncA').value)) },
-    { name: $('sNameB').value.trim() || 'Conjoint(e)', income: Math.max(0, parseNum($('sIncB').value)) },
-  ];
+  state.people[0].name = $('sNameA').value.trim() || state.people[0].name;
+  state.people[1].name = $('sNameB').value.trim() || state.people[1].name;
+  const me = $('sMe').value; state.me = me === 'a' || me === 'b' ? me : null;
   state.settings = {
     savings: Math.max(0, parseNum($('sSavings').value)),
     months: clamp(Math.round(parseNum($('sMonths').value)) || 3, 1, 24),
     margin: clamp(parseNum($('sMargin').value), 0, 80),
   };
-  saveCfg(); render(); toast('Réglages enregistrés');
+  saveCfg('people', 'settings'); render(); toast('Réglages enregistrés');
 });
-
 $('fixedForm').addEventListener('submit', e => {
   e.preventDefault();
   const amount = parseNum($('fAmount').value);
@@ -517,24 +668,22 @@ $('fixedForm').addEventListener('submit', e => {
   state.fixed.push({ id: uid(), label: $('fLabel').value.trim(), amount, kind: $('fKind').value, who: $('fWho').value });
   save(); $('fLabel').value = ''; $('fAmount').value = ''; render(); toast('Charge ajoutée');
 });
-
 $('catForm').addEventListener('submit', e => {
   e.preventDefault();
   const n = $('cName').value.trim();
   if (n && !state.categories.includes(n)) { state.categories.push(n); save(); render(); }
   $('cName').value = '';
 });
-
 $('budgetForm').addEventListener('submit', e => {
   e.preventDefault();
   const c = $('bCat').value, a = parseNum($('bAmount').value);
   if (!c) return;
   if (a > 0) state.budgets[c] = a; else delete state.budgets[c];
-  saveCfg(); $('bAmount').value = ''; render(); toast(a > 0 ? `Budget ${c} : ${fmt0(a)}` : `Budget ${c} retiré`);
+  saveCfg('budgets'); $('bAmount').value = ''; render(); toast(a > 0 ? `Budget ${c} : ${fmt0(a)}` : `Budget ${c} retiré`);
 });
 
-$('projectOn').onclick = () => { state.project.enabled = true; saveCfg(); render(); $('projectDetails').open = true; $('pPrice').focus(); };
-
+// Maison
+$('projectOn').onclick = () => { state.project.enabled = true; saveCfg('project'); render(); $('projectDetails').open = true; $('pPrice').focus(); };
 $('projectForm').addEventListener('submit', e => {
   e.preventDefault();
   state.project = {
@@ -549,9 +698,10 @@ $('projectForm').addEventListener('submit', e => {
     years: clamp(Math.round(parseNum($('pYears').value)) || 25, 5, 30),
     ins: clamp(parseNum($('pIns').value), 0, 3),
   };
-  saveCfg(); render(); toast('Projet enregistré'); $('projectDetails').open = false;
-  $('projectCard').scrollIntoView({ behavior: 'smooth' });
+  saveCfg('project'); render(); toast('Projet enregistré'); $('projectDetails').open = false;
+  window.scrollTo(0, 0);
 });
+
 
 function download(name, content, type) {
   if (ANDROID) {
@@ -576,7 +726,8 @@ $('importFile').addEventListener('change', async e => {
     const d = JSON.parse(await f.text());
     if (!valid(d)) throw new Error();
     if (!confirm('Remplacer les données actuelles par cette sauvegarde ?')) return;
-    state = migrate(d); selectedCat = state.categories[0];
+    const me = state.me;
+    state = migrate(d); state.me = me || state.me; selectedCat = state.categories[0];
     save(); render(); toast('Sauvegarde importée');
   } catch { toast('Fichier invalide'); }
   e.target.value = '';
@@ -645,7 +796,7 @@ $('impGo').onclick = () => {
   state.lastImport = { id: bat, at: Date.now(), file: imp.file };
   imp = null;
   save(); if (last) viewMonth = ym(last);
-  render(); showTab('mois');
+  render(); showTab('depenses');
   toast(`${n} opération${n > 1 ? 's' : ''} importée${n > 1 ? 's' : ''}`);
 };
 $('undoImport').onclick = () => {
@@ -666,7 +817,9 @@ function mergeStates(L, R) {
   const deleted = { ...R.deleted, ...L.deleted };
   const uni = (a, b) => { const m = new Map(); [...a, ...b].forEach(x => { if (!deleted[x.id] && !m.has(x.id)) m.set(x.id, x); }); return [...m.values()]; };
   const dedupImp = arr => { const seen = new Set(); return arr.filter(x => !x.imp || (seen.has(x.imp + x.who) ? false : (seen.add(x.imp + x.who), true))); };
-  const cfg = (R.cfgAt || 0) > (L.cfgAt || 0) ? R : L;
+  // Chaque section de réglages : la version modifiée le plus récemment (un téléphone neuf ne peut pas écraser l'autre).
+  const pick = k => (((R.at || {})[k] || 0) > ((L.at || {})[k] || 0) ? R : L);
+  const at = {}; CFG_SECTIONS.forEach(k => at[k] = Math.max((L.at || {})[k] || 0, (R.at || {})[k] || 0));
   return {
     ...L,
     expenses: dedupImp(uni(L.expenses, R.expenses)),
@@ -675,8 +828,24 @@ function mergeStates(L, R) {
     categories: [...new Set([...L.categories, ...R.categories])],
     rules: { ...R.rules, ...L.rules },
     deleted,
-    people: cfg.people, settings: cfg.settings, project: cfg.project, budgets: cfg.budgets, cfgAt: cfg.cfgAt || 0,
+    people: pick('people').people, settings: pick('settings').settings, project: pick('project').project,
+    budgets: pick('budgets').budgets, done: pick('done').done, at, cfgAt: Math.max(L.cfgAt || 0, R.cfgAt || 0),
+    salaries: mergeSalaries(L, R),
+    me: L.me,
   };
+}
+function mergeSalaries(L, R) {
+  const out = {};
+  for (const k of new Set([...Object.keys(L.salaries || {}), ...Object.keys(R.salaries || {})])) {
+    const l = (L.salaries || {})[k] || {}, r = (R.salaries || {})[k] || {}, e = {};
+    for (const w of ['a', 'b']) {
+      // Le salaire de chacun saisi sur son propre téléphone l'emporte.
+      const v = R.me === w && r[w] ? r[w] : (l[w] || r[w]);
+      if (v) e[w] = v;
+    }
+    if (Object.keys(e).length) out[k] = e;
+  }
+  return out;
 }
 
 $('shareBtn').onclick = async () => {
@@ -704,6 +873,7 @@ $('mergeFile').addEventListener('change', async e => {
     const merged = migrate(mergeStates(state, migrate(d)));
     const after = new Set([...merged.expenses, ...merged.incomes, ...merged.fixed].map(x => x.id));
     const added = [...after].filter(id => !before.has(id)).length, removed = [...before].filter(id => !after.has(id)).length;
+    merged.lastMerge = Date.now();
     state = merged; selectedCat = state.categories.includes(selectedCat) ? selectedCat : state.categories[0];
     save(); render();
     toast(`Fusion faite : ${added} reçue${added > 1 ? 's' : ''}${removed ? `, ${removed} supprimée${removed > 1 ? 's' : ''}` : ''}`);
