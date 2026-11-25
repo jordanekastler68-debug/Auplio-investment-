@@ -9,6 +9,7 @@ const NOTAIRE = { ancien: 0.075, neuf: 0.025 };
 const HCSF_MAX = 0.35;                          // taux d'endettement maximum, assurance comprise
 const HCSF_YEARS = { ancien: 25, neuf: 27 };    // durée max (27 ans en VEFA / construction)
 const WHO = ['a', 'b', 'c'];
+const ANDROID = window.AuplioAndroid || null;   // présent quand l'appli tourne dans l'APK Android
 
 const eur = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
 const eur0 = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
@@ -119,6 +120,7 @@ const markDeleted = ids => { const t = Date.now(); ids.forEach(id => state.delet
 
 let persisted = null;
 async function ensurePersistent() {
+  if (ANDROID) { persisted = 'app'; renderStorage(); return; }
   try {
     if (navigator.storage && navigator.storage.persist) persisted = await navigator.storage.persisted() || await navigator.storage.persist();
   } catch (e) { persisted = false; }
@@ -127,7 +129,8 @@ async function ensurePersistent() {
 function renderStorage() {
   const el = $('storageStatus'); if (!el) return;
   const last = state.updatedAt ? new Date(state.updatedAt).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '—';
-  const prot = persisted === true ? '✓ Stockage protégé (Chrome ne l\'efface pas)'
+  const prot = persisted === 'app' ? `✓ Données gardées dans l'appli Android${ANDROID.version ? ' ' + ANDROID.version() : ''} (effacées seulement si tu la désinstalles)`
+    : persisted === true ? '✓ Stockage protégé (Chrome ne l\'efface pas)'
     : persisted === false ? '⚠ Stockage non protégé : installe l\'appli sur l\'écran d\'accueil puis rouvre-la'
     : 'Vérification du stockage…';
   el.innerHTML = `${saveOk ? '✓ Sauvegarde automatique active' : '⚠ Dernière sauvegarde échouée'}<br>${prot}<br>` +
@@ -551,6 +554,11 @@ $('projectForm').addEventListener('submit', e => {
 });
 
 function download(name, content, type) {
+  if (ANDROID) {
+    const ok = ANDROID.save(name, content, type);
+    toast(ok ? 'Enregistré dans Téléchargements › Auplio Investment' : '⚠ Enregistrement impossible');
+    return;
+  }
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([content], { type }));
   a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
@@ -674,6 +682,7 @@ function mergeStates(L, R) {
 $('shareBtn').onclick = async () => {
   const name = `auplio-partage-${todayISO()}.txt`;   // .txt : format accepté par le partage Android
   const json = JSON.stringify(state);
+  if (ANDROID) { ANDROID.share(name, json, 'Mes données Auplio Investment : ouvre l\'appli → Réglages → « Recevoir et fusionner ».'); return; }
   try {
     const file = new File([json], name, { type: 'text/plain' });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -711,4 +720,4 @@ load().then(({ data, migrated }) => {
   ensurePersistent();
 });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && state.updatedAt) save(); });
-if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+if (!ANDROID && 'serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));

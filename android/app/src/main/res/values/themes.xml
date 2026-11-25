@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.AuplioInvestment" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="colorPrimary">@color/night</item>
+        <item name="colorPrimaryDark">@color/night</item>
+        <item name="colorAccent">@color/night</item>
+        <item name="android:windowBackground">@color/night</item>
+        <item name="android:statusBarColor">@color/night</item>
+        <item name="android:navigationBarColor">@color/night</item>
+    </style>
+</resources>

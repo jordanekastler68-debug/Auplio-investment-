@@ -1,0 +1,7 @@
+.gradle/
+build/
+local.properties
+*.iml
+.idea/
+# La clé de signature n'est jamais dans ce dépôt public (voir android/LISEZMOI.md).
+signing/
