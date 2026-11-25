@@ -63,3 +63,29 @@ button{font:inherit;border:0;border-radius:10px;padding:12px 14px;cursor:pointer
 .tabs button.active{color:var(--night)}.tabs button.active span{font-weight:600}
 .toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%) translateY(20px);background:var(--night);color:#fff;padding:10px 16px;border-radius:999px;opacity:0;transition:.25s;pointer-events:none;font-size:.9rem}
 .toast.show{opacity:1;transform:translateX(-50%)}
+/* ---- v0.2 ---- */
+.center{text-align:center;padding:0 8px}
+.label{font-size:.8rem;color:var(--muted);margin:12px 0 6px}
+select{width:100%;font:inherit;padding:11px 10px;border:1px solid #dde1e6;border-radius:10px;background:#fbfbfa;color:var(--text)}
+.seg{display:flex;background:#eef1f4;border-radius:10px;padding:3px;gap:3px;margin-bottom:6px}
+.seg button{flex:1;background:none;padding:9px 6px;font-size:.88rem;color:var(--muted);border-radius:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.seg button.on{background:#fff;color:var(--night);font-weight:600;box-shadow:0 1px 2px rgba(15,27,45,.12)}
+.badge{display:inline-block;font-size:.68rem;padding:1px 7px;border-radius:999px;background:#eef1f4;color:var(--steel);margin-right:4px}
+.badge.loyer{background:#e8eef6}.badge.credit{background:#f6e9e4;color:var(--warn)}.badge.abonnement{background:#f4efe3;color:#8a6d33}
+.calc tr.head td{font-size:.75rem;color:var(--muted);border-bottom:1px solid #e6e8eb}
+.calc tr.sub td{font-weight:600}
+#whoTable td:nth-child(2){text-align:right}
+.bars .b div.over{background:var(--warn)}.bars .b div.risk{background:var(--gold)}.bars .b div.okb{background:var(--ok)}
+.warn{color:#a07a2c}
+.negbig{color:#e9a08f!important}
+.okbox,.warnbox{border-radius:10px;padding:10px 12px;font-size:.88rem;margin:10px 0}
+.okbox{background:#e7f3ed;color:#1f5a40}.warnbox{background:#f8e9e4;color:#7d3524}
+details{margin-top:12px;border-top:1px solid #f0f1f3;padding-top:10px}
+summary{cursor:pointer;color:var(--steel);font-weight:600;font-size:.9rem;padding:4px 0}
+.check{display:flex;align-items:center;gap:8px;font-size:.9rem;margin:8px 0}.check input{width:auto}
+.slider{display:flex;align-items:center;gap:10px;font-size:.85rem;color:var(--muted);margin-bottom:6px}
+.slider input{flex:1;padding:0;border:0;background:none;accent-color:var(--night)}
+.slider b{color:var(--night);min-width:44px;text-align:right}
+.list .r small{display:block;text-align:right;color:var(--muted);font-size:.75rem}
+.list .r .pos{text-align:right}
+.tabs button{font-size:1.1rem}
