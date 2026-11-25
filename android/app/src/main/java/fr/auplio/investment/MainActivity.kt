@@ -38,6 +38,7 @@ import java.io.File
  * Pont JavaScript « AuplioAndroid » :
  *  - share(nom, contenu, texte) : envoie le fichier de données à l'autre téléphone (WhatsApp, mail…)
  *  - save(nom, contenu, type)   : enregistre un export dans Téléchargements/Auplio Investment
+ *  - shareText(texte)           : envoie le code d'invitation (synchro) par WhatsApp, SMS…
  */
 class MainActivity : AppCompatActivity() {
 
@@ -180,6 +181,16 @@ class MainActivity : AppCompatActivity() {
         @JavascriptInterface
         fun save(name: String, content: String, mime: String): Boolean =
             try { saveToDownloads(name, content, mime) } catch (e: Exception) { false }
+
+        @JavascriptInterface
+        fun shareText(text: String) {
+            runOnUiThread {
+                try {
+                    val send = Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, text) }
+                    startActivity(Intent.createChooser(send, "Envoyer"))
+                } catch (e: Exception) { }
+            }
+        }
 
         @JavascriptInterface
         fun version(): String = BuildConfig.VERSION_NAME

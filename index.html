@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0f1b2d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Auplio">
 <title>Auplio Investment</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
@@ -13,18 +16,22 @@
 <body>
 <header class="top">
   <h1>Auplio <span>Investment</span></h1>
-  <div id="monthLabel" class="month"></div>
+  <div class="top-r">
+    <span id="syncDot" class="sync-dot" title="Synchronisation"></span>
+    <span id="monthLabel" class="month"></span>
+    <button type="button" id="gear" class="gear" aria-label="Réglages">⚙</button>
+  </div>
 </header>
 
 <main>
-  <!-- ============ ACCUEIL ============ -->
-  <section id="tab-home" class="tab active">
-    <div class="card" id="whoCard">
-      <h2>Bienvenue ! Qui êtes-vous ?</h2>
-      <p class="muted small">Chacun installe l'appli sur son téléphone et saisit ses propres dépenses. Indiquez vos deux prénoms, puis qui utilise ce téléphone.</p>
+  <!-- ============ PREMIER LANCEMENT ============ -->
+  <section id="tab-welcome" class="tab">
+    <div class="card">
+      <h2>Bienvenue</h2>
+      <p class="muted small">Chacun installe l'appli sur son téléphone et note ses dépenses. Le tableau de bord montre le foyer à deux.</p>
       <div class="row">
-        <input id="wNameA" type="text" maxlength="16" placeholder="Prénom 1">
-        <input id="wNameB" type="text" maxlength="16" placeholder="Prénom 2">
+        <label class="field">Prénom 1<input id="wNameA" type="text" maxlength="16" placeholder="Jordane"></label>
+        <label class="field">Prénom 2<input id="wNameB" type="text" maxlength="16" placeholder="Iris"></label>
       </div>
       <p class="label">Ce téléphone est celui de :</p>
       <div class="row">
@@ -32,166 +39,182 @@
         <button type="button" class="primary" data-setme="b" id="wMeB">Prénom 2</button>
       </div>
     </div>
+    <div class="card">
+      <h2>On vous a envoyé un code ?</h2>
+      <p class="muted small">Si votre conjoint a déjà configuré l'appli, collez ici le code d'invitation qu'il vous a envoyé : tout se règle d'un coup.</p>
+      <textarea id="wCode" rows="3" placeholder="AUPLIO1:…"></textarea>
+      <button type="button" class="ghost" id="wCodeBtn">Utiliser le code</button>
+    </div>
+  </section>
 
-    <div class="card" id="payCard">
-      <div class="card-head">
-        <h2>Fiches de paie</h2>
-        <div class="mini-nav"><button type="button" id="payPrev" aria-label="Mois précédent">‹</button><b id="payMonth"></b><button type="button" id="payNext" aria-label="Mois suivant">›</button></div>
-      </div>
-      <p class="muted small">Le « net payé » en bas de la fiche de paie, chaque mois.</p>
-      <form id="payForm">
+  <!-- ============ TABLEAU DE BORD ============ -->
+  <section id="tab-dash" class="tab">
+    <div id="banners"></div>
+
+    <div class="card" id="houseCard"></div>
+
+    <div class="duo" id="duo"></div>
+
+    <div class="card">
+      <div class="line big"><b>Le foyer ce mois-ci</b><b id="foyerLeft"></b></div>
+      <p class="muted small" id="foyerSub"></p>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Charges du mois</h2><button type="button" class="ghost sm" data-go="reglages#chargesCard">Gérer</button></div>
+      <ul id="chargeList" class="list compact"></ul>
+    </div>
+
+    <div class="card">
+      <h2>Où part l'argent, à deux</h2>
+      <ul id="whereList" class="bars"></ul>
+      <p class="legend" id="legend"></p>
+    </div>
+  </section>
+
+  <!-- ============ AJOUTER ============ -->
+  <section id="tab-add" class="tab">
+    <form id="addForm" class="card">
+      <label class="amount">
+        <input id="amount" type="text" inputmode="decimal" placeholder="0,00" autocomplete="off">
+        <span>€</span>
+      </label>
+      <div id="catChips" class="chips"></div>
+      <p class="muted small" id="addMeta"></p>
+      <div class="seg" id="whoSeg"></div>
+      <details class="more">
+        <summary>Date, note</summary>
         <div class="row">
-          <label class="field"><span id="payLblA">Prénom 1</span><input id="payA" type="text" inputmode="decimal" placeholder="€"></label>
-          <label class="field"><span id="payLblB">Prénom 2</span><input id="payB" type="text" inputmode="decimal" placeholder="€"></label>
+          <input id="date" type="date">
+          <input id="note" type="text" placeholder="Note" maxlength="60">
         </div>
-        <button type="submit" class="primary">Enregistrer les salaires</button>
+      </details>
+      <button type="submit" class="primary">Ajouter</button>
+      <p class="muted small center" id="addSync"></p>
+    </form>
+    <div class="card">
+      <h2>Dernières dépenses</h2>
+      <ul id="recentList" class="list"></ul>
+    </div>
+  </section>
+
+  <!-- ============ HISTORIQUE ============ -->
+  <section id="tab-hist" class="tab">
+    <div class="card">
+      <div class="month-nav">
+        <button type="button" id="hPrev" aria-label="Mois précédent">‹</button>
+        <strong id="hMonth"></strong>
+        <button type="button" id="hNext" aria-label="Mois suivant">›</button>
+      </div>
+      <div class="seg" id="hFilter"></div>
+      <form id="paySet" class="pay-row"></form>
+      <p class="muted small" id="hTotals"></p>
+    </div>
+    <div class="card">
+      <ul id="hList" class="list"></ul>
+    </div>
+  </section>
+
+  <!-- ============ RÉGLAGES ============ -->
+  <section id="tab-reglages" class="tab">
+    <div class="card" id="syncCard">
+      <h2>Synchronisation à deux</h2>
+      <p class="small" id="syncState"></p>
+      <div id="syncSetup">
+        <p class="muted small">Les données du foyer sont rangées dans un dépôt GitHub <b>privé</b> : chacun voit les saisies de l'autre automatiquement.</p>
+        <label class="field">Dépôt privé<input id="syRepo" type="text" placeholder="jordanekastler68-debug/auplio-foyer" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+        <label class="field">Clé d'accès GitHub (jeton)<input id="syToken" type="password" placeholder="github_pat_…" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+        <button type="button" class="primary" id="syTest">Tester et activer</button>
+      </div>
+      <div id="syncActive">
+        <button type="button" class="primary" id="syInvite">Envoyer le code d'invitation</button>
+        <button type="button" class="ghost" id="syNow">Synchroniser maintenant</button>
+        <button type="button" class="ghost danger" id="syOff">Désactiver sur ce téléphone</button>
+      </div>
+    </div>
+
+    <form id="houseForm" class="card">
+      <h2>La maison</h2>
+      <div class="row">
+        <label class="field">Prix visé (€)<input id="pPrice" type="text" inputmode="decimal"></label>
+        <label class="field">Type<select id="pType"><option value="ancien">Ancien (notaire ≈ 7,5 %)</option><option value="neuf">Neuf (notaire ≈ 2,5 %)</option></select></label>
+      </div>
+      <div class="row">
+        <label class="field">Apport déjà de côté (€)<input id="pSaved" type="text" inputmode="decimal"></label>
+        <label class="field">Travaux (€)<input id="pWorks" type="text" inputmode="decimal"></label>
+      </div>
+      <div class="row">
+        <label class="field">Apport visé (% du prix, en plus des frais)<input id="pApportPct" type="number" min="0" max="100" step="1"></label>
+        <label class="field">Part du reste mise de côté (%)<input id="pShare" type="number" min="10" max="100" step="5"></label>
+      </div>
+      <div class="row">
+        <label class="field">Taux du prêt (%)<input id="pRate" type="text" inputmode="decimal"></label>
+        <label class="field">Durée (ans)<input id="pYears" type="number" min="5" max="30" step="1"></label>
+        <label class="field">Assurance (%/an)<input id="pIns" type="text" inputmode="decimal"></label>
+      </div>
+      <button type="submit" class="primary">Enregistrer</button>
+    </form>
+
+    <div class="card" id="chargesCard">
+      <h2>Charges</h2>
+      <p class="muted small">Tout ce qui tombe régulièrement. Pour une facture tous les 2, 3, 6 ou 12 mois, l'appli la ramène au mois.</p>
+      <ul id="chargeEdit" class="list"></ul>
+      <p class="label">Ajouter :</p>
+      <div id="presetChips" class="chips"></div>
+      <form id="chargeForm">
+        <div class="row">
+          <input id="cLabel" type="text" placeholder="Nom (Électricité, Loyer…)" required>
+          <input id="cAmount" type="text" inputmode="decimal" placeholder="€" required class="short">
+        </div>
+        <div class="row">
+          <select id="cPeriod">
+            <option value="1">chaque mois</option>
+            <option value="2">tous les 2 mois</option>
+            <option value="3">tous les 3 mois</option>
+            <option value="6">tous les 6 mois</option>
+            <option value="12">une fois par an</option>
+          </select>
+          <select id="cWho"></select>
+          <button type="submit" class="ghost">+</button>
+        </div>
+      </form>
+    </div>
+
+    <form id="foyerForm" class="card">
+      <h2>Le foyer</h2>
+      <div class="row">
+        <label class="field">Prénom 1<input id="sNameA" type="text" maxlength="16"></label>
+        <label class="field">Prénom 2<input id="sNameB" type="text" maxlength="16"></label>
+      </div>
+      <label class="field">Ce téléphone est celui de<select id="sMe"></select></label>
+      <button type="submit" class="ghost">Enregistrer</button>
+    </form>
+
+    <div class="card">
+      <h2>Catégories de dépenses</h2>
+      <div id="catEdit" class="chips"></div>
+      <form id="catForm" class="row">
+        <input id="catName" type="text" placeholder="Nouvelle catégorie" maxlength="20" required>
+        <button type="submit" class="ghost">+</button>
       </form>
     </div>
 
     <div class="card">
-      <h2 id="ovTitle">Vue d'ensemble</h2>
-      <table class="calc ov" id="ovTable"></table>
-      <div class="left-line"><span>Reste à ce jour</span><b id="ovLeft"></b></div>
-      <p class="muted small" id="ovNote"></p>
-    </div>
-
-    <div class="card">
-      <h2>À faire ce mois-ci</h2>
-      <ul id="todoList" class="todo"></ul>
-    </div>
-
-    <div class="card">
-      <h2>Vos objectifs</h2>
-      <div id="goals"></div>
-    </div>
-
-    <div class="card">
-      <details>
-        <summary>Comment c'est calculé</summary>
-        <table class="calc" id="calcTable"></table>
-        <p class="muted small" id="calcBasis"></p>
-      </details>
-    </div>
-  </section>
-
-  <!-- ============ SAISIE ============ -->
-  <section id="tab-saisie" class="tab">
-    <form id="opForm" class="card">
-      <div class="seg" id="typeSeg">
-        <button type="button" data-type="dep" class="on">Dépense</button>
-        <button type="button" data-type="rev">Rentrée d'argent</button>
-      </div>
-      <label class="amount">
-        <input id="amount" type="text" inputmode="decimal" placeholder="0,00" autocomplete="off" required>
-        <span>€</span>
-      </label>
-      <div id="catBlock">
-        <div id="catChips" class="chips"></div>
-      </div>
-      <p class="label" id="whoLabel">Payé par</p>
-      <div class="seg" id="whoSeg"></div>
-      <div class="row">
-        <input id="note" type="text" placeholder="Note (facultatif)" maxlength="60">
-        <input id="date" type="date">
-      </div>
-      <button type="submit" class="primary" id="opSubmit">Ajouter la dépense</button>
-    </form>
-    <div class="card">
-      <div class="card-head"><h2>Mes dernières saisies</h2><span id="monthTotal" class="muted small"></span></div>
-      <ul id="recentList" class="list"></ul>
-    </div>
-    <div class="card">
-      <h2>Gagner du temps : relevé bancaire</h2>
-      <p class="muted small">Au lieu de tout saisir : exporte tes opérations au format CSV depuis l'appli ou le site de ta banque, puis importe le fichier. Les dépenses sont classées toutes seules.</p>
+      <h2>Relevé bancaire (facultatif)</h2>
+      <p class="muted small">Pour rattraper des dépenses oubliées : importez le relevé CSV de votre banque, les dépenses sont classées toutes seules.</p>
       <label class="ghost file">Importer un relevé (CSV)<input id="csvFile" type="file" accept=".csv,.txt,text/csv,text/plain,text/comma-separated-values,application/vnd.ms-excel"></label>
+      <button type="button" id="undoImport" class="ghost danger" style="display:none;width:100%;margin-top:8px"></button>
     </div>
-  </section>
 
-  <!-- ============ DÉPENSES ============ -->
-  <section id="tab-depenses" class="tab">
     <div class="card">
-      <div class="month-nav">
-        <button id="prevMonth" aria-label="Mois précédent">‹</button>
-        <strong id="viewMonthLabel"></strong>
-        <button id="nextMonth" aria-label="Mois suivant">›</button>
+      <h2>Sauvegarde</h2>
+      <p id="storageStatus" class="small"></p>
+      <div class="row">
+        <button type="button" id="exportBtn" class="ghost">Exporter (JSON)</button>
+        <button type="button" id="exportCsvBtn" class="ghost">Exporter (CSV)</button>
       </div>
-      <div class="seg" id="filterSeg"></div>
-      <div class="kpis">
-        <div><small>Rentrées</small><b id="kIncome"></b></div>
-        <div><small>Dépensé</small><b id="kVar"></b></div>
-        <div><small>Charges fixes</small><b id="kFixed"></b></div>
-        <div><small>Reste</small><b id="kLeft"></b></div>
-      </div>
+      <label class="ghost file">Restaurer une sauvegarde<input id="importFile" type="file" accept="application/json,.json,.txt,text/plain"></label>
     </div>
-    <div class="card">
-      <h2>Où part l'argent</h2>
-      <ul id="catBreakdown" class="bars"></ul>
-      <details>
-        <summary>Fixer des budgets par catégorie</summary>
-        <ul id="budgetList" class="bars"></ul>
-        <form id="budgetForm" class="row">
-          <select id="bCat"></select>
-          <input id="bAmount" type="text" inputmode="decimal" placeholder="€ / mois" class="short">
-          <button type="submit" class="ghost">OK</button>
-        </form>
-        <p class="muted small">Mets 0 pour retirer un budget. Un budget dépassé apparaît dans « À faire » sur l'accueil.</p>
-      </details>
-    </div>
-    <div class="card">
-      <h2>Le détail</h2>
-      <ul id="monthList" class="list"></ul>
-    </div>
-    <div class="card">
-      <h2>Où économiser</h2>
-      <div class="slider">
-        <span>Si on réduit de</span>
-        <input id="ecoPct" type="range" min="5" max="50" step="5" value="20">
-        <b id="ecoPctLbl">20 %</b>
-      </div>
-      <ul id="leverList" class="list"></ul>
-      <p id="leverMsg" class="small"></p>
-      <details>
-        <summary>Abonnements</summary>
-        <ul id="subList" class="list"></ul>
-      </details>
-    </div>
-  </section>
-
-  <!-- ============ MAISON ============ -->
-  <section id="tab-maison" class="tab">
-    <div class="card" id="projectCard">
-      <h2>Projet d'achat immobilier</h2>
-      <div id="projectOff">
-        <p class="muted small">Indiquez le bien visé : l'appli calcule l'apport à mettre de côté, quand vous l'aurez, la mensualité et si la banque peut suivre (35 % d'endettement maximum, 25 ans).</p>
-        <button type="button" class="primary" id="projectOn">Configurer le projet</button>
-      </div>
-      <div id="projectRes"></div>
-      <details id="projectDetails">
-        <summary>Modifier le projet</summary>
-        <form id="projectForm">
-          <label class="check"><input id="pEnabled" type="checkbox"> Projet actif</label>
-          <div class="row">
-            <label class="field">Prix du bien (€)<input id="pPrice" type="text" inputmode="decimal"></label>
-            <label class="field">Type<select id="pType"><option value="ancien">Ancien (notaire ≈ 7,5 %)</option><option value="neuf">Neuf (notaire ≈ 2,5 %)</option></select></label>
-          </div>
-          <div class="row">
-            <label class="field">Travaux (€)<input id="pWorks" type="text" inputmode="decimal"></label>
-            <label class="field">Apport déjà de côté (€)<input id="pSaved" type="text" inputmode="decimal"></label>
-          </div>
-          <div class="row">
-            <label class="field">Apport visé (% du prix, en plus des frais)<input id="pApportPct" type="number" min="0" max="100" step="1"></label>
-            <label class="field">Part de l'épargne mensuelle pour l'apport (%)<input id="pShare" type="number" min="0" max="100" step="5"></label>
-          </div>
-          <div class="row">
-            <label class="field">Taux du prêt (%)<input id="pRate" type="text" inputmode="decimal"></label>
-            <label class="field">Durée (ans)<input id="pYears" type="number" min="5" max="30" step="1"></label>
-            <label class="field">Assurance (%/an)<input id="pIns" type="text" inputmode="decimal"></label>
-          </div>
-          <button type="submit" class="primary">Enregistrer le projet</button>
-        </form>
-      </details>
-    </div>
-    <p class="muted small center">Calcul indicatif, pas un conseil financier. Les banques calculent l'endettement sur les revenus nets avant impôt : le taux affiché ici est donc un peu prudent.</p>
   </section>
 
   <!-- ============ IMPORT CSV ============ -->
@@ -199,85 +222,18 @@
     <div class="card">
       <div class="card-head"><h2>Vérifier l'import</h2><button type="button" class="ghost sm" id="impCancel">Annuler</button></div>
       <p id="impSummary" class="small"></p>
-      <label class="field">Ce relevé est celui du compte de<select id="impWho"></select></label>
-      <p class="muted small">Décochés d'office pour ne rien compter deux fois : salaires, virements vers l'épargne ou eToro, charges fixes déjà déclarées, opérations déjà importées. Corrige une catégorie : l'appli l'appliquera aux lignes du même commerçant et s'en souviendra.</p>
+      <label class="field">Ce relevé est celui de<select id="impWho"></select></label>
+      <p class="muted small">Décochés d'office : salaires, virements vers l'épargne ou eToro, charges déjà déclarées, opérations déjà importées.</p>
     </div>
     <ul id="impList" class="implist"></ul>
     <div class="impbar"><button type="button" class="primary" id="impGo">Importer</button></div>
   </section>
-
-  <!-- ============ RÉGLAGES ============ -->
-  <section id="tab-reglages" class="tab">
-    <div class="card" id="syncCard">
-      <h2>Réunir vos deux téléphones</h2>
-      <p class="muted small">Pour la vue d'ensemble, chaque téléphone doit recevoir les saisies de l'autre : « Envoyer mes données » (WhatsApp…), puis sur l'autre téléphone « Recevoir et fusionner ». Rien n'est compté deux fois.</p>
-      <p class="small" id="syncInfo"></p>
-      <button type="button" id="shareBtn" class="primary">Envoyer mes données</button>
-      <label class="ghost file">Recevoir et fusionner<input id="mergeFile" type="file" accept=".txt,.json,text/plain,application/json"></label>
-    </div>
-    <div class="card" id="fixedCard">
-      <h2>Charges fixes du mois</h2>
-      <p class="muted small">Tout ce qui tombe chaque mois : loyer, crédits, énergie, assurances, téléphone, abonnements… C'est ce qui pèse le plus dans le calcul.</p>
-      <ul id="fixedList" class="list"></ul>
-      <form id="fixedForm">
-        <div class="row">
-          <input id="fLabel" type="text" placeholder="Loyer, EDF, Netflix…" required>
-          <input id="fAmount" type="text" inputmode="decimal" placeholder="€" required class="short">
-        </div>
-        <div class="row">
-          <select id="fKind">
-            <option value="charge">Charge</option>
-            <option value="loyer">Loyer</option>
-            <option value="credit">Crédit</option>
-            <option value="abonnement">Abonnement</option>
-          </select>
-          <select id="fWho"></select>
-          <button type="submit" class="ghost">+</button>
-        </div>
-      </form>
-    </div>
-    <form id="settingsForm" class="card">
-      <h2>Le foyer</h2>
-      <div class="row">
-        <label class="field">Prénom 1<input id="sNameA" type="text" maxlength="16"></label>
-        <label class="field">Prénom 2<input id="sNameB" type="text" maxlength="16"></label>
-      </div>
-      <label class="field">Ce téléphone est celui de<select id="sMe"></select></label>
-      <h2>Épargne de sécurité</h2>
-      <div class="row">
-        <label class="field">Déjà de côté (€)<input id="sSavings" type="text" inputmode="decimal"></label>
-        <label class="field">Objectif (mois de dépenses)<input id="sMonths" type="number" min="1" max="24" step="1"></label>
-      </div>
-      <label class="field">Garder sur le compte courant pour les imprévus (% de ce qui reste)<input id="sMargin" type="number" min="0" max="80" step="5"></label>
-      <button type="submit" class="primary">Enregistrer</button>
-    </form>
-    <div class="card">
-      <h2>Catégories de dépenses</h2>
-      <div id="catEdit" class="chips"></div>
-      <form id="catForm" class="row">
-        <input id="cName" type="text" placeholder="Nouvelle catégorie" maxlength="20" required>
-        <button type="submit" class="ghost">+</button>
-      </form>
-    </div>
-    <div class="card">
-      <h2>Sauvegarde</h2>
-      <p id="storageStatus" class="small"></p>
-      <div class="row">
-        <button id="exportBtn" class="ghost">Exporter (JSON)</button>
-        <button id="exportCsvBtn" class="ghost">Exporter (CSV)</button>
-      </div>
-      <label class="ghost file">Restaurer une sauvegarde (remplace tout)<input id="importFile" type="file" accept="application/json,.json,.txt,text/plain"></label>
-      <button type="button" id="undoImport" class="ghost danger" style="display:none;width:100%;margin-top:8px"></button>
-    </div>
-  </section>
 </main>
 
-<nav class="tabs">
-  <button data-tab="home" class="active">◉<span>Accueil</span></button>
-  <button data-tab="saisie">＋<span>Saisie</span></button>
-  <button data-tab="depenses">▤<span>Dépenses</span></button>
-  <button data-tab="maison">⌂<span>Maison</span></button>
-  <button data-tab="reglages">⚙<span>Réglages</span></button>
+<nav class="tabs" id="nav">
+  <button type="button" data-tab="dash" class="active">▦<span>Tableau de bord</span></button>
+  <button type="button" data-tab="add">＋<span>Ajouter</span></button>
+  <button type="button" data-tab="hist">☰<span>Historique</span></button>
 </nav>
 
 <div id="toast" class="toast"></div>
