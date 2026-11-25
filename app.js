@@ -37,6 +37,10 @@ const blank = () => ({
   categories: [...DEFAULT_CATS],
   settings: { savings: 0, months: 3, margin: 10 },
   project: blankProject(),
+  rules: {},          // commerçant → catégorie, appris lors des imports
+  deleted: {},        // id supprimé → date (pour propager les suppressions entre téléphones)
+  cfgAt: 0,           // date de la dernière modif. des réglages (le plus récent gagne à la fusion)
+  lastImport: null,
   updatedAt: 0,
 });
 const valid = d => d && typeof d === 'object' && Array.isArray(d.expenses);
@@ -53,13 +57,17 @@ function migrate(d) {
   return {
     v: 2,
     people,
-    expenses: d.expenses.filter(e => e && e.date && e.amount > 0).map(e => ({ id: e.id || uid(), date: e.date, amount: +e.amount, cat: e.cat || 'Divers', note: e.note || '', who: WHO.includes(e.who) ? e.who : 'a' })),
-    incomes: (Array.isArray(d.incomes) ? d.incomes : []).filter(i => i && i.date && i.amount > 0).map(i => ({ id: i.id || uid(), date: i.date, amount: +i.amount, note: i.note || '', who: WHO.includes(i.who) ? i.who : 'a' })),
+    expenses: d.expenses.filter(e => e && e.date && e.amount > 0).map(e => ({ ...e, id: e.id || uid(), amount: +e.amount, cat: e.cat || 'Divers', note: e.note || '', who: WHO.includes(e.who) ? e.who : 'a' })),
+    incomes: (Array.isArray(d.incomes) ? d.incomes : []).filter(i => i && i.date && i.amount > 0).map(i => ({ ...i, id: i.id || uid(), amount: +i.amount, note: i.note || '', who: WHO.includes(i.who) ? i.who : 'a' })),
     fixed: (Array.isArray(d.fixed) ? d.fixed : []).map(f => ({ id: f.id || uid(), label: f.label || '—', amount: num(f.amount), kind: KINDS[f.kind] ? f.kind : 'charge', who: WHO.includes(f.who) ? f.who : 'c' })),
     budgets: d.budgets && typeof d.budgets === 'object' ? d.budgets : {},
     categories: Array.isArray(d.categories) && d.categories.length ? d.categories : [...DEFAULT_CATS],
     settings: { savings: num(s.savings), months: num(s.months, 3) || 3, margin: num(s.margin, 10) },
     project: { ...blankProject(), ...(d.project || {}) },
+    rules: d.rules && typeof d.rules === 'object' ? d.rules : {},
+    deleted: d.deleted && typeof d.deleted === 'object' ? d.deleted : {},
+    cfgAt: d.cfgAt || 0,
+    lastImport: d.lastImport || null,
     updatedAt: d.updatedAt || 0,
   };
 }
@@ -106,6 +114,9 @@ async function save() {
   if (!ok) toast('⚠ Échec de la sauvegarde');
   renderStorage();
 }
+function saveCfg() { state.cfgAt = Date.now(); return save(); }
+const markDeleted = ids => { const t = Date.now(); ids.forEach(id => state.deleted[id] = t); };
+
 let persisted = null;
 async function ensurePersistent() {
   try {
@@ -121,6 +132,12 @@ function renderStorage() {
     : 'Vérification du stockage…';
   el.innerHTML = `${saveOk ? '✓ Sauvegarde automatique active' : '⚠ Dernière sauvegarde échouée'}<br>${prot}<br>` +
     `${state.expenses.length} dépense(s), ${state.incomes.length} revenu(s) exceptionnel(s) · dernière modif. ${last}`;
+  const li = state.lastImport, ub = $('undoImport');
+  if (ub) {
+    const n = li ? state.expenses.filter(e => e.bat === li.id).length + state.incomes.filter(i => i.bat === li.id).length : 0;
+    ub.style.display = n ? '' : 'none';
+    ub.textContent = n ? `Annuler le dernier import (${n} opération${n > 1 ? 's' : ''}, ${new Date(li.at).toLocaleDateString('fr-FR')})` : '';
+  }
 }
 
 /* ---------- Calculs ---------- */
@@ -428,11 +445,13 @@ function render() { renderSaisieForm(); renderSaisie(); renderMois(); renderEco(
 function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('show'), 1800); }
 
 /* ---------- Événements ---------- */
-document.querySelector('.tabs').addEventListener('click', e => {
-  const b = e.target.closest('button[data-tab]'); if (!b) return;
-  document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('active', x === b));
-  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.id === 'tab-' + b.dataset.tab));
+function showTab(name) {
+  document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('active', x.dataset.tab === name));
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.id === 'tab-' + name));
   window.scrollTo(0, 0);
+}
+document.querySelector('.tabs').addEventListener('click', e => {
+  const b = e.target.closest('button[data-tab]'); if (b) showTab(b.dataset.tab);
 });
 
 $('typeSeg').addEventListener('click', e => { const b = e.target.closest('[data-type]'); if (b) { opType = b.dataset.type; renderSaisieForm(); } });
@@ -454,10 +473,12 @@ document.addEventListener('click', e => {
   const t = e.target;
   if (t.dataset.del) {
     if (!confirm('Supprimer cette opération ?')) return;
+    markDeleted([t.dataset.del]);
     if (t.dataset.k === 'inc') state.incomes = state.incomes.filter(x => x.id !== t.dataset.del);
     else state.expenses = state.expenses.filter(x => x.id !== t.dataset.del);
     save(); render();
   } else if (t.dataset.delfixed) {
+    markDeleted([t.dataset.delfixed]);
     state.fixed = state.fixed.filter(x => x.id !== t.dataset.delfixed); save(); render();
   } else if (t.dataset.delcat) {
     if (state.categories.length <= 1) return toast('Il faut au moins une catégorie');
@@ -483,7 +504,7 @@ $('settingsForm').addEventListener('submit', e => {
     months: clamp(Math.round(parseNum($('sMonths').value)) || 3, 1, 24),
     margin: clamp(parseNum($('sMargin').value), 0, 80),
   };
-  save(); render(); toast('Réglages enregistrés');
+  saveCfg(); render(); toast('Réglages enregistrés');
 });
 
 $('fixedForm').addEventListener('submit', e => {
@@ -506,10 +527,10 @@ $('budgetForm').addEventListener('submit', e => {
   const c = $('bCat').value, a = parseNum($('bAmount').value);
   if (!c) return;
   if (a > 0) state.budgets[c] = a; else delete state.budgets[c];
-  save(); $('bAmount').value = ''; render(); toast(a > 0 ? `Budget ${c} : ${fmt0(a)}` : `Budget ${c} retiré`);
+  saveCfg(); $('bAmount').value = ''; render(); toast(a > 0 ? `Budget ${c} : ${fmt0(a)}` : `Budget ${c} retiré`);
 });
 
-$('projectOn').onclick = () => { state.project.enabled = true; save(); render(); $('projectDetails').open = true; $('pPrice').focus(); };
+$('projectOn').onclick = () => { state.project.enabled = true; saveCfg(); render(); $('projectDetails').open = true; $('pPrice').focus(); };
 
 $('projectForm').addEventListener('submit', e => {
   e.preventDefault();
@@ -525,7 +546,7 @@ $('projectForm').addEventListener('submit', e => {
     years: clamp(Math.round(parseNum($('pYears').value)) || 25, 5, 30),
     ins: clamp(parseNum($('pIns').value), 0, 3),
   };
-  save(); render(); toast('Projet enregistré'); $('projectDetails').open = false;
+  saveCfg(); render(); toast('Projet enregistré'); $('projectDetails').open = false;
   $('projectCard').scrollIntoView({ behavior: 'smooth' });
 });
 
@@ -551,6 +572,133 @@ $('importFile').addEventListener('change', async e => {
     save(); render(); toast('Sauvegarde importée');
   } catch { toast('Fichier invalide'); }
   e.target.value = '';
+});
+
+/* ---------- Import de relevé bancaire (CSV) ---------- */
+let imp = null;   // { rows, file }
+
+$('csvFile').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  try {
+    const p = parseStatement(decodeBytes(await f.arrayBuffer()));
+    if (p.error || !p.rows.length) return toast(p.error || 'Aucune opération trouvée dans ce fichier');
+    const existing = new Set([...state.expenses, ...state.incomes].map(x => x.imp).filter(Boolean));
+    const rows = classify(p.rows, { categories: state.categories, rules: state.rules, fixed: state.fixed, existing })
+      .sort((a, b) => b.date.localeCompare(a.date));
+    imp = { rows, file: f.name };
+    $('impWho').innerHTML = WHO.map(w => `<option value="${w}"${w === 'c' ? ' selected' : ''}>${w === 'c' ? 'Compte commun' : esc(whoName(w))}</option>`).join('');
+    renderImport(); showTab('import');
+  } catch (err) { toast('Fichier illisible'); }
+});
+
+function renderImport() {
+  if (!imp) return;
+  const rows = imp.rows, on = rows.filter(r => r.on);
+  const dates = rows.map(r => r.date).sort();
+  const d = x => new Date(x + 'T00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+  const dep = sum(on.filter(r => r.amount < 0).map(r => -r.amount)), rev = sum(on.filter(r => r.amount > 0).map(r => r.amount));
+  $('impSummary').innerHTML = `<b>${rows.length}</b> opérations du ${d(dates[0])} au ${d(dates[dates.length - 1])}.<br>` +
+    `<b>${on.length}</b> cochées : ${fmt(dep)} de dépenses${rev ? ` et ${fmt(rev)} de revenus` : ''}.`;
+  const opts = state.categories.map(c => `<option>${esc(c)}</option>`).join('');
+  $('impList').innerHTML = rows.map((r, i) => `<li class="${r.on ? '' : 'off'}">
+    <input type="checkbox" data-ii="${i}"${r.on ? ' checked' : ''} aria-label="Importer cette ligne">
+    <div class="l"><b>${esc(r.label)}</b><small>${new Date(r.date + 'T00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}${r.reason ? ' · ' + esc(r.reason) : ''}</small></div>
+    <div class="r2"><span class="${r.amount > 0 ? 'pos' : ''}">${r.amount > 0 ? '+' : ''}${fmt(Math.abs(r.amount))}</span>
+    ${r.amount < 0 ? `<select data-ic="${i}">${opts.replace(`<option>${esc(r.cat)}</option>`, `<option selected>${esc(r.cat)}</option>`)}</select>` : ''}</div></li>`).join('');
+  $('impGo').textContent = on.length ? `Importer ${on.length} opération${on.length > 1 ? 's' : ''}` : 'Rien à importer';
+  $('impGo').disabled = !on.length;
+}
+
+$('impList').addEventListener('change', e => {
+  const t = e.target;
+  if (t.dataset.ii !== undefined) { imp.rows[+t.dataset.ii].on = t.checked; renderImport(); }
+  else if (t.dataset.ic !== undefined) {
+    const r = imp.rows[+t.dataset.ic];
+    r.cat = t.value; r.manual = true;
+    // même commerçant → même catégorie, sauf lignes déjà corrigées à la main
+    imp.rows.forEach(x => { if (x !== r && !x.manual && x.key === r.key) x.cat = t.value; });
+    renderImport();
+  }
+});
+$('impCancel').onclick = () => { imp = null; showTab('saisie'); };
+$('impGo').onclick = () => {
+  if (!imp) return;
+  const who = $('impWho').value, bat = uid(), rows = imp.rows.filter(r => r.on);
+  let n = 0, last = null;
+  for (const r of rows) {
+    const base = { id: uid(), date: r.date, amount: Math.abs(r.amount), note: r.label.slice(0, 60), who, imp: r.imp, bat, src: 'csv' };
+    if (r.amount < 0) {
+      state.expenses.push({ ...base, cat: r.cat });
+      if (r.cat !== r.auto || r.manual) state.rules[r.key] = r.cat;
+    } else state.incomes.push(base);
+    n++; if (!last || r.date > last) last = r.date;
+  }
+  state.lastImport = { id: bat, at: Date.now(), file: imp.file };
+  imp = null;
+  save(); if (last) viewMonth = ym(last);
+  render(); showTab('mois');
+  toast(`${n} opération${n > 1 ? 's' : ''} importée${n > 1 ? 's' : ''}`);
+};
+$('undoImport').onclick = () => {
+  const li = state.lastImport; if (!li) return;
+  if (!confirm('Supprimer toutes les opérations du dernier import ?')) return;
+  const ids = [...state.expenses, ...state.incomes].filter(x => x.bat === li.id).map(x => x.id);
+  markDeleted(ids);
+  state.expenses = state.expenses.filter(e => e.bat !== li.id);
+  state.incomes = state.incomes.filter(i => i.bat !== li.id);
+  state.lastImport = null;
+  save(); render(); toast(`${ids.length} opérations retirées`);
+};
+
+/* ---------- Partage entre les deux téléphones ---------- */
+// Fusion : union des opérations par identifiant, suppressions propagées,
+// doublons d'import éliminés, réglages = version la plus récemment modifiée.
+function mergeStates(L, R) {
+  const deleted = { ...R.deleted, ...L.deleted };
+  const uni = (a, b) => { const m = new Map(); [...a, ...b].forEach(x => { if (!deleted[x.id] && !m.has(x.id)) m.set(x.id, x); }); return [...m.values()]; };
+  const dedupImp = arr => { const seen = new Set(); return arr.filter(x => !x.imp || (seen.has(x.imp + x.who) ? false : (seen.add(x.imp + x.who), true))); };
+  const cfg = (R.cfgAt || 0) > (L.cfgAt || 0) ? R : L;
+  return {
+    ...L,
+    expenses: dedupImp(uni(L.expenses, R.expenses)),
+    incomes: dedupImp(uni(L.incomes, R.incomes)),
+    fixed: uni(L.fixed, R.fixed),
+    categories: [...new Set([...L.categories, ...R.categories])],
+    rules: { ...R.rules, ...L.rules },
+    deleted,
+    people: cfg.people, settings: cfg.settings, project: cfg.project, budgets: cfg.budgets, cfgAt: cfg.cfgAt || 0,
+  };
+}
+
+$('shareBtn').onclick = async () => {
+  const name = `auplio-partage-${todayISO()}.txt`;   // .txt : format accepté par le partage Android
+  const json = JSON.stringify(state);
+  try {
+    const file = new File([json], name, { type: 'text/plain' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: 'Auplio Investment', text: 'Mes données Auplio Investment : ouvre l\'appli → Réglages → « Recevoir et fusionner ».' });
+      return;
+    }
+  } catch (err) { if (err && err.name === 'AbortError') return; }
+  download(name, json, 'text/plain');
+  toast('Fichier enregistré dans Téléchargements : envoie-le à l\'autre téléphone');
+};
+
+$('mergeFile').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  try {
+    const d = JSON.parse(await f.text());
+    if (!valid(d)) throw new Error();
+    const before = new Set([...state.expenses, ...state.incomes, ...state.fixed].map(x => x.id));
+    const merged = migrate(mergeStates(state, migrate(d)));
+    const after = new Set([...merged.expenses, ...merged.incomes, ...merged.fixed].map(x => x.id));
+    const added = [...after].filter(id => !before.has(id)).length, removed = [...before].filter(id => !after.has(id)).length;
+    state = merged; selectedCat = state.categories.includes(selectedCat) ? selectedCat : state.categories[0];
+    save(); render();
+    toast(`Fusion faite : ${added} reçue${added > 1 ? 's' : ''}${removed ? `, ${removed} supprimée${removed > 1 ? 's' : ''}` : ''}`);
+  } catch (err) { toast('Fichier invalide'); }
 });
 
 /* ---------- Démarrage ---------- */

@@ -3,7 +3,7 @@
 Application mobile (PWA installable sur Android) pour gérer le budget d'un couple, repérer où économiser, préparer un achat immobilier et calculer chaque mois le montant réellement investissable.
 Complément de Vigie Trading Analytics : Vigie dit **où** investir, Auplio Investment dit **combien**, et seulement après la sécurité et l'apport.
 
-## Fonctions (v0.2)
+## Fonctions (v0.3)
 - **Saisie** : dépense ou revenu exceptionnel en deux taps, payé par l'un, l'autre ou en commun.
 - **Mois** : revenus du foyer, charges fixes, dépenses, reste ; répartition par personne et par catégorie.
 - **Économies** : taux d'épargne du foyer, leviers chiffrés (réduction testée de 5 à 50 %, gain par mois et par an, effet sur la date d'apport), budgets par catégorie avec projection fin de mois, postes qui dérapent par rapport à la moyenne, abonnements.
@@ -14,6 +14,8 @@ Complément de Vigie Trading Analytics : Vigie dit **où** investir, Auplio Inve
   → 2. apport immobilier (part réglable du reste)
   → 3. investissable (pour Vigie).
   Projet immobilier : frais de notaire (ancien 7,5 % / neuf 2,5 %), apport visé, mensualité avec assurance, taux d'endettement vs 35 % (règle HCSF), durée max 25 ans (27 en neuf), capacité d'emprunt, prix maximum, coût du crédit, reste à vivre après achat, date estimée de l'apport.
+- **Import de relevés bancaires (CSV)** : toutes banques françaises et néobanques (détection automatique du séparateur, de l'encodage, des colonnes, des dates et montants, fichiers avec ou sans en-tête). Catégorisation automatique (commerçants courants + règles apprises quand on corrige), libellés nettoyés, anti-doublons d'un import à l'autre, annulation du dernier import. Décochés d'office : salaires, virements vers l'épargne / eToro / courtiers, virements internes, charges fixes déjà déclarées.
+- **Partage entre les deux téléphones** : envoi des données (partage Android : WhatsApp, mail…) et fusion sur l'autre téléphone, sans doublons, suppressions propagées, réglages les plus récents conservés.
 - **Réglages** : prénoms et salaires, charges fixes typées (loyer, crédit, abonnement, charge), catégories, export JSON/CSV, import.
 
 Données 100 % locales sur le téléphone (IndexedDB + copie localStorage), fonctionne hors ligne. Les données v0.1 sont reprises automatiquement.
@@ -30,7 +32,6 @@ python3 -m http.server 8080
 Puis ouvrir http://localhost:8080. Après chaque modification publiée, incrémenter `VERSION` dans `sw.js`.
 
 ## Pistes suivantes
-- Synchronisation entre les deux téléphones du couple.
-- Import des relevés bancaires (CSV) pour éviter la saisie manuelle.
+- Synchronisation automatique (sans échange de fichier) via un petit serveur (Firebase / Supabase).
 - Charges fixes datées (prélèvements réels) et revenus variables mois par mois.
 - Export du montant investissable vers Vigie.

@@ -1,6 +1,6 @@
 // Cache hors ligne. Incrémenter VERSION à chaque mise en ligne pour forcer la mise à jour.
-const VERSION = 'ai-v3';
-const ASSETS = ['./', 'index.html', 'styles.css', 'app.js', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png'];
+const VERSION = 'ai-v4';
+const ASSETS = ['./', 'index.html', 'styles.css', 'app.js', 'bank.js', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));

@@ -40,6 +40,11 @@
       <button type="submit" class="primary" id="opSubmit">Ajouter la dépense</button>
     </form>
     <div class="card">
+      <h2>Relevé bancaire</h2>
+      <p class="muted small">Télécharge le relevé de ton compte au format CSV (appli ou site de ta banque, rubrique « Exporter » / « Télécharger mes opérations »), puis importe-le : les dépenses sont classées toutes seules. Importer 2 ou 3 mois d'un coup donne tout de suite des moyennes fiables.</p>
+      <label class="ghost file">Importer un relevé (CSV)<input id="csvFile" type="file" accept=".csv,.txt,text/csv,text/plain,text/comma-separated-values,application/vnd.ms-excel"></label>
+    </div>
+    <div class="card">
       <div class="card-head"><h2>Dernières opérations</h2><span id="monthTotal" class="muted small"></span></div>
       <ul id="recentList" class="list"></ul>
     </div>
@@ -167,6 +172,18 @@
     <p class="muted small center">Outil de calcul indicatif, pas un conseil financier. Les banques calculent l'endettement sur les revenus nets avant impôt : le taux affiché ici est donc un peu prudent.</p>
   </section>
 
+  <!-- ============ IMPORT CSV ============ -->
+  <section id="tab-import" class="tab">
+    <div class="card">
+      <div class="card-head"><h2>Vérifier l'import</h2><button type="button" class="ghost sm" id="impCancel">Annuler</button></div>
+      <p id="impSummary" class="small"></p>
+      <label class="field">Ce relevé est celui du compte de<select id="impWho"></select></label>
+      <p class="muted small">Décochés d'office pour ne rien compter deux fois : salaires, virements vers l'épargne ou eToro, charges fixes déjà déclarées, opérations déjà importées. Corrige une catégorie : l'appli l'appliquera aux lignes du même commerçant et s'en souviendra.</p>
+    </div>
+    <ul id="impList" class="implist"></ul>
+    <div class="impbar"><button type="button" class="primary" id="impGo">Importer</button></div>
+  </section>
+
   <!-- ============ RÉGLAGES ============ -->
   <section id="tab-reglages" class="tab">
     <form id="settingsForm" class="card">
@@ -217,6 +234,12 @@
       </form>
     </div>
     <div class="card">
+      <h2>Partage entre vos deux téléphones</h2>
+      <p class="muted small">Chacun saisit sur son téléphone. Pour réunir les comptes : « Envoyer mes données » (WhatsApp, mail…), puis sur l'autre téléphone « Recevoir et fusionner ». Rien n'est compté deux fois et les suppressions suivent. Faites-le dans les deux sens, par exemple chaque dimanche.</p>
+      <button type="button" id="shareBtn" class="primary">Envoyer mes données</button>
+      <label class="ghost file">Recevoir et fusionner<input id="mergeFile" type="file" accept=".txt,.json,text/plain,application/json"></label>
+    </div>
+    <div class="card">
       <h2>Sauvegarde</h2>
       <p id="storageStatus" class="small"></p>
       <p class="muted small">Tout est enregistré dans l'appli à chaque saisie. L'export sert de copie si tu changes de téléphone, ou pour transférer les données d'un téléphone à l'autre.</p>
@@ -224,7 +247,8 @@
         <button id="exportBtn" class="ghost">Exporter (JSON)</button>
         <button id="exportCsvBtn" class="ghost">Exporter (CSV)</button>
       </div>
-      <label class="ghost file">Importer une sauvegarde<input id="importFile" type="file" accept="application/json,.json"></label>
+      <label class="ghost file">Restaurer une sauvegarde (remplace tout)<input id="importFile" type="file" accept="application/json,.json,.txt,text/plain"></label>
+      <button type="button" id="undoImport" class="ghost danger" style="display:none;width:100%;margin-top:8px"></button>
     </div>
   </section>
 </main>
@@ -238,6 +262,7 @@
 </nav>
 
 <div id="toast" class="toast"></div>
+<script src="bank.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
