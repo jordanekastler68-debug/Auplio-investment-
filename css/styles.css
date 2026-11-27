@@ -212,10 +212,10 @@ body.no-nav .tabbar,body.no-nav .top .icon-btn{display:none}
 .sheet-bg{position:fixed;inset:0;z-index:30;background:rgba(30,18,10,.45);opacity:0;pointer-events:none;transition:opacity .2s}
 .sheet{position:fixed;left:0;right:0;bottom:0;z-index:31;background:var(--surface);border-radius:22px 22px 0 0;
   padding:14px 16px calc(14px + env(safe-area-inset-bottom));max-width:560px;margin:0 auto;
-  transform:translateY(105%);transition:transform .22s ease-out;max-height:92vh;overflow:auto}
+  transform:translateY(105%);transition:transform .22s ease-out,visibility 0s .22s;max-height:92vh;overflow:auto;visibility:hidden}
 .sheet::before{content:"";display:block;width:40px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 8px}
 body.sheet-open .sheet-bg{opacity:1;pointer-events:auto}
-body.sheet-open .sheet{transform:none}
+body.sheet-open .sheet{transform:none;visibility:visible;transition:transform .22s ease-out}
 .amount{display:flex;align-items:baseline;justify-content:center;gap:6px;margin:2px 0 10px}
 .amount input{border:0;background:none;font-size:2.6rem;font-weight:800;text-align:right;width:62%;padding:2px;letter-spacing:-.02em}
 .amount input:focus{outline:0}
@@ -225,3 +225,36 @@ body.sheet-open .sheet{transform:none}
 .sheet-row{display:flex;align-items:center;justify-content:space-between;margin:12px 0 10px}
 .who-btn.big{padding:10px 16px;font-size:.95rem}
 .who-btn.big .dot{width:11px;height:11px;flex-basis:11px}
+
+/* Onglet Mois */
+:root,[data-theme="light"]{--c1:#C2603A;--c2:#3F7F74;--c3:#B07A1E;--c4:#7A4A32;--c5:#6F7FB0;--c6:#A45A82;--c7:#8C9A4A;--c8:#B9AA98}
+[data-theme="dark"]{--c1:#E07A52;--c2:#6DB3A7;--c3:#E0B058;--c4:#C99474;--c5:#98A6D6;--c6:#D08BB2;--c7:#B6C46E;--c8:#7D6F63}
+.month-nav{display:flex;align-items:center;justify-content:space-between;margin:2px 0 12px}
+.month-nav h1{font-size:1.2rem;font-weight:800;text-transform:capitalize;letter-spacing:-.02em}
+.month-nav .icon-btn{font-size:1.5rem;line-height:1;color:var(--text)}
+.month-nav .icon-btn:disabled{opacity:.3}
+.stack{display:flex;height:16px;border-radius:8px;overflow:hidden;margin:4px 0 10px;background:var(--surface-2)}
+.stack i{display:block;height:100%}
+.legend{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:4px 12px}
+.legend li{display:flex;align-items:center;gap:6px;font-size:.84rem;min-width:0;cursor:pointer}
+.legend li span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.legend li b{font-variant-numeric:tabular-nums}
+.legend .sw{width:10px;height:10px;border-radius:3px;flex:0 0 10px}
+.sal-row{display:flex;align-items:center;gap:10px;padding:5px 0}
+.sal-row>span:first-child{flex:1;font-size:.9rem;display:flex;align-items:center}
+.sal-row .euro{flex:0 0 120px}.sal-row input{padding:8px 28px 8px 10px;text-align:right}.sal-row .euro::after{bottom:9px}
+.filters{position:sticky;top:calc(54px + env(safe-area-inset-top));z-index:4;background:var(--bg);padding:6px 0 8px;margin:0 -16px;padding-left:16px;padding-right:16px}
+.chips.scroll{flex-wrap:nowrap;overflow-x:auto;margin-top:8px;scrollbar-width:none;padding-bottom:2px}
+.chips.scroll::-webkit-scrollbar{display:none}
+.chips.scroll .chip{flex:0 0 auto;padding:7px 12px;font-size:.85rem}
+.day-head{display:flex;justify-content:space-between;font-size:.8rem;font-weight:700;color:var(--muted);margin:14px 4px 6px}
+.ops{list-style:none;margin:0;padding:0 14px;background:var(--surface);border-radius:16px;border:1px solid var(--line)}
+[data-theme="dark"] .ops{border-color:transparent}
+.ops li{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.ops li:last-child{border-bottom:0}
+.ops .grow{flex:1;min-width:0}
+.ops .grow b{display:block;font-weight:600;font-size:.93rem}
+.ops .grow small{color:var(--muted);font-size:.78rem}
+.ops .amt{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tag{display:inline-block;font-size:.7rem;font-weight:700;color:var(--muted);background:var(--surface-2);border-radius:6px;padding:1px 6px;margin-left:4px;vertical-align:1px}
+#mWho button{font-size:.8rem;padding:9px 2px}

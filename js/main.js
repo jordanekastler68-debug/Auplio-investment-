@@ -4,7 +4,7 @@
 
 const VIEWS = {
   home: renderHome,
-  month: () => {},
+  month: renderMonth,
   project: renderProject,
   settings: renderSettings,
   setup: renderSetup,

@@ -62,7 +62,20 @@
     <div id="homeCard"></div>
     <div id="homeDuo"></div>
   </section>
-  <section id="v-month" class="view"></section>
+  <section id="v-month" class="view">
+    <div class="month-nav">
+      <button type="button" class="icon-btn" id="mPrev" aria-label="Mois précédent">‹</button>
+      <h1 id="mTitle"></h1>
+      <button type="button" class="icon-btn" id="mNext" aria-label="Mois suivant">›</button>
+    </div>
+    <div class="card" id="mWhere"></div>
+    <div class="card" id="mBudget"></div>
+    <div class="filters">
+      <div class="seg" id="mWho"></div>
+      <div class="chips scroll" id="mCats"></div>
+    </div>
+    <div id="mList"></div>
+  </section>
   <section id="v-project" class="view">
     <div id="projResult"></div>
     <form class="card" id="projForm" autocomplete="off">
@@ -162,6 +175,7 @@
 <script src="js/projet.js"></script>
 <script src="js/accueil.js"></script>
 <script src="js/ajout.js"></script>
+<script src="js/mois.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>
