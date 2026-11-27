@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "AuplioInvestment"
+rootProject.name = "NestGoal"
 include(":app")
