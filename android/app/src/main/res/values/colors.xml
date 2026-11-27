@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="night">#0F1B2D</color>
-    <color name="paper">#F6F4EF</color>
+    <!-- Fond de l'appli et de l'écran de démarrage (crème en clair, brun très foncé en sombre). -->
+    <color name="background">#FBF6EF</color>
+    <color name="terracotta">#C2603A</color>
+    <color name="cream">#FBF6EF</color>
 </resources>

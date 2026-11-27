@@ -68,7 +68,7 @@ val repoRoot = rootDir.parentFile
 val wwwAssets = layout.buildDirectory.dir("generated/www-assets")
 val copyWww = tasks.register<Copy>("copyWww") {
     from(repoRoot) {
-        include("index.html", "app.js", "bank.js", "styles.css", "manifest.webmanifest", "icons/**")
+        include("index.html", "manifest.webmanifest", "css/**", "js/**", "fonts/**", "icons/**")
     }
     into(wwwAssets.map { it.dir("www") })
 }

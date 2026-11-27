@@ -1,16 +1,17 @@
 {
-  "name": "Auplio Investment",
-  "short_name": "Investment",
-  "description": "Suivi des dépenses et capacité d'investissement",
+  "name": "NestGoal",
+  "short_name": "NestGoal",
+  "description": "Quand est-ce qu'on achète notre maison ?",
   "lang": "fr",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#f6f4ef",
-  "theme_color": "#0f1b2d",
+  "background_color": "#FBF6EF",
+  "theme_color": "#FBF6EF",
   "icons": [
-    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

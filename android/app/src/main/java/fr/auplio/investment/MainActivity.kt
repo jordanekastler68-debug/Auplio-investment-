@@ -5,6 +5,8 @@ import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ContentValues
 import android.content.Intent
+import android.content.res.Configuration
+import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -31,18 +33,20 @@ import androidx.webkit.WebViewAssetLoader
 import java.io.File
 
 /**
- * Auplio Investment sur Android : l'interface web (index.html, app.js, bank.js…) est rangée dans l'APK
+ * NestGoal sur Android : l'interface web (index.html, css/, js/…) est rangée dans l'APK
  * et affichée par une WebView, entièrement hors ligne. Les données (IndexedDB + localStorage) restent
  * dans le stockage privé de l'appli : elles ne sont effacées que si l'appli est désinstallée.
  *
- * Pont JavaScript « AuplioAndroid » :
+ * Pont JavaScript « NestGoalAndroid » :
  *  - share(nom, contenu, texte) : envoie le fichier de données à l'autre téléphone (WhatsApp, mail…)
- *  - save(nom, contenu, type)   : enregistre un export dans Téléchargements/Auplio Investment
+ *  - save(nom, contenu, type)   : enregistre un export dans Téléchargements/NestGoal
+ *  - setDark(sombre, couleur)   : accorde les barres du système au thème choisi dans l'appli
  *  - shareText(texte)           : envoie le code d'invitation (synchro) par WhatsApp, SMS…
  */
 class MainActivity : AppCompatActivity() {
 
     private lateinit var web: WebView
+    private lateinit var root: FrameLayout
     private var fileCallback: ValueCallback<Array<Uri>>? = null
 
     private val pickFile = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { res ->
@@ -55,9 +59,9 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val night = ContextCompat.getColor(this, R.color.night)
-        val root = FrameLayout(this).apply { setBackgroundColor(night) }
-        web = WebView(this).apply { setBackgroundColor(night) }
+        val bg = ContextCompat.getColor(this, R.color.background)
+        root = FrameLayout(this).apply { setBackgroundColor(bg) }
+        web = WebView(this).apply { setBackgroundColor(bg) }
         root.addView(web, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         setContentView(root)
 
@@ -67,10 +71,7 @@ class MainActivity : AppCompatActivity() {
             v.setPadding(b.left, b.top, b.right, b.bottom)
             WindowInsetsCompat.CONSUMED
         }
-        WindowInsetsControllerCompat(window, root).apply {
-            isAppearanceLightStatusBars = false
-            isAppearanceLightNavigationBars = false
-        }
+        applyBars(isNight(), bg)
 
         val loader = WebViewAssetLoader.Builder()
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
@@ -114,7 +115,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-        web.addJavascriptInterface(Bridge(), "AuplioAndroid")
+        web.addJavascriptInterface(Bridge(), "NestGoalAndroid")
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -127,7 +128,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
-        // Filet de sécurité : l'appli sauvegarde déjà à chaque saisie.
+        // Filet de sécurité : l'appli enregistre déjà à chaque saisie.
         web.evaluateJavascript("try{state.updatedAt&&save()}catch(e){}", null)
     }
 
@@ -137,7 +138,23 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
-    private fun safeName(name: String) = name.replace(Regex("[^A-Za-z0-9._-]"), "_").ifBlank { "auplio.txt" }
+    private fun isNight() =
+        (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+
+    /** Couleur de fond et icônes claires/foncées des barres du système, selon le thème de l'appli. */
+    @Suppress("DEPRECATION")
+    private fun applyBars(dark: Boolean, color: Int) {
+        root.setBackgroundColor(color)
+        web.setBackgroundColor(color)
+        window.statusBarColor = color
+        window.navigationBarColor = color
+        WindowInsetsControllerCompat(window, root).apply {
+            isAppearanceLightStatusBars = !dark
+            isAppearanceLightNavigationBars = !dark
+        }
+    }
+
+    private fun safeName(name: String) = name.replace(Regex("[^A-Za-z0-9._-]"), "_").ifBlank { "nestgoal.txt" }
 
     private fun shareFile(name: String, content: String, text: String) {
         val dir = File(cacheDir, "partage").apply { mkdirs() }
@@ -163,7 +180,7 @@ class MainActivity : AppCompatActivity() {
         val values = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, safeName(name))
             put(MediaStore.MediaColumns.MIME_TYPE, mime.ifBlank { "text/plain" })
-            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/Auplio Investment")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/NestGoal")
         }
         val uri = contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values) ?: return false
         contentResolver.openOutputStream(uri)?.use { it.write(content.toByteArray(Charsets.UTF_8)) } ?: return false
@@ -189,6 +206,14 @@ class MainActivity : AppCompatActivity() {
                     val send = Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, text) }
                     startActivity(Intent.createChooser(send, "Envoyer"))
                 } catch (e: Exception) { }
+            }
+        }
+
+        @JavascriptInterface
+        fun setDark(dark: Boolean, color: String) {
+            runOnUiThread {
+                val c = try { Color.parseColor(color.trim()) } catch (e: Exception) { if (dark) Color.parseColor("#1A1411") else Color.parseColor("#FBF6EF") }
+                applyBars(dark, c)
             }
         }
 
