@@ -135,3 +135,23 @@ body.no-nav .tabbar,body.no-nav .top .icon-btn{display:none}
 .person-edit{border-top:1px solid var(--line);padding-top:6px;margin-top:6px}
 .person-edit:first-of-type{border-top:0;margin-top:0;padding-top:0}
 .person-edit h3{font-size:.9rem;margin:6px 0 0;display:flex;align-items:center}
+
+/* Démarrage */
+.steps{display:flex;gap:6px;justify-content:center;margin:6px 0 18px}
+.steps i{width:28px;height:5px;border-radius:3px;background:var(--line)}
+.steps i.on{background:var(--accent)}
+.setup h1{font-size:1.45rem;font-weight:800;letter-spacing:-.02em;margin:0 0 6px}
+.setup .lead{color:var(--muted);margin:0 0 16px}
+.setup .big input{font-size:1.15rem;font-weight:600;padding:14px}
+.setup-nav{display:flex;gap:10px;margin-top:18px;align-items:center}
+.setup-nav .btn{flex:1}
+.setup-nav .link{flex:0 0 auto;padding:12px 8px}
+.charge-line{display:flex;align-items:center;gap:10px;padding:6px 0}
+.charge-line span{flex:1;font-weight:600}
+.charge-line .euro{flex:0 0 130px}
+.charge-line input{text-align:right;padding-right:28px}
+.loan-line{display:flex;gap:8px;align-items:flex-end;margin:6px 0}
+.loan-line .euro{flex:1 1 0;min-width:0}.loan-line .euro input{padding-right:28px;text-align:right}
+.loan-line .field:not(.euro){flex:1.5 1 0;min-width:0}
+.loan-line .field{margin:0}
+.loan-line .x{margin-bottom:6px}

@@ -7,6 +7,7 @@ const VIEWS = {
   month: () => {},
   project: () => {},
   settings: renderSettings,
+  setup: renderSetup,
 };
 const TABS = ['home', 'month', 'project'];
 let current = 'home', lastTab = 'home';
@@ -22,6 +23,7 @@ function show(name) {
 }
 function render() {
   applyTheme();
+  if (!state.setupDone && current !== 'setup') { show('setup'); return; }
   (VIEWS[current] || (() => {}))();
 }
 /* Les réglages (et la fenêtre d'ajout) prennent une entrée dans l'historique : le bouton « retour »
@@ -50,7 +52,7 @@ document.addEventListener('click', e => {
 
 load().then(data => {
   state = data;
-  show('home');
+  show(state.setupDone ? 'home' : 'setup');
   setTimeout(() => $('splash').classList.add('gone'), 350);
   if (!ANDROID && navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 });
