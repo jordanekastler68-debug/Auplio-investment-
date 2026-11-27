@@ -140,6 +140,19 @@
   <button type="button" class="tab tab-project" data-view="project"><svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V11l7-6 7 6v10"/><path d="M10 21v-5h4v5"/></svg><span>Projet</span></button>
 </nav>
 
+<!-- Ajout d'une dépense : montant, catégorie, valider -->
+<div class="sheet-bg" id="sheetBg"></div>
+<form class="sheet" id="sheet" autocomplete="off" aria-label="Ajouter une dépense">
+  <label class="amount"><input id="addAmount" type="text" inputmode="decimal" placeholder="0" aria-label="Montant"><span>€</span></label>
+  <div class="chips cats" id="addCats"></div>
+  <div class="sheet-row">
+    <button type="button" class="who-btn big" id="addWho"></button>
+    <button type="button" class="link small" id="addDateBtn"></button>
+    <input type="date" id="addDate" hidden>
+  </div>
+  <button type="submit" class="btn" id="addOk">Valider</button>
+</form>
+
 <div id="toast" class="toast" role="status"></div>
 
 <script src="js/core.js"></script>
@@ -148,6 +161,7 @@
 <script src="js/onboarding.js"></script>
 <script src="js/projet.js"></script>
 <script src="js/accueil.js"></script>
+<script src="js/ajout.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

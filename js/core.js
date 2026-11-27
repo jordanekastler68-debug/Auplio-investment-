@@ -170,3 +170,5 @@ const plural = (n, w) => `${n} ${w}${n > 1 ? 's' : ''}`;
 const duration = m => m < 12 ? `${m} mois` : (m % 12 ? `${plural(Math.floor(m / 12), 'an')} et ${m % 12} mois` : plural(m / 12, 'an'));
 const pctStr = (n, d = 1) => (n * 100).toLocaleString('fr-FR', { maximumFractionDigits: d }) + ' %';
 const progressBar = (ratio, cls = '') => `<div class="bar ${cls}"><i style="width:${clamp(ratio, 0, 1) * 100}%"></i></div>`;
+// Fermetures prioritaires pour le bouton « retour » d'Android (fenêtre d'ajout…), voir js/main.js.
+const backHandlers = [];

@@ -29,7 +29,6 @@ function render() {
 /* Les réglages (et la fenêtre d'ajout) prennent une entrée dans l'historique : le bouton « retour »
    d'Android les referme au lieu de quitter l'appli. */
 let pendingView = null;
-const backHandlers = [];   // fermetures prioritaires (fenêtre d'ajout…)
 function openSettings(anchor) {
   if (current !== 'settings') { history.pushState({ ng: 'settings' }, ''); show('settings'); }
   if (anchor && $(anchor)) setTimeout(() => $(anchor).scrollIntoView({ behavior: 'smooth', block: 'start' }), 30);
