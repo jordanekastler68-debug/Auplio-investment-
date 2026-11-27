@@ -176,3 +176,34 @@ body.no-nav .tabbar,body.no-nav .top .icon-btn{display:none}
 .whatif small{display:block;color:var(--muted);font-weight:500;font-size:.8rem}
 .gain{color:var(--ok)}
 #pjType{margin:4px 0 2px}
+
+/* Accueil : tient sur un écran sans défiler */
+.banner{display:flex;align-items:center;gap:10px;border-radius:14px;padding:6px 8px 6px 12px;margin-bottom:6px;font-size:.88rem;background:var(--info-soft)}
+.banner.pay{background:var(--accent-soft)}
+.banner form{display:flex;gap:6px;flex:0 0 auto}
+.banner input{width:92px;padding:6px 8px;font-size:.92rem;text-align:right;background:var(--surface)}
+.banner .btn.sm{padding:7px 12px}
+.banner p{flex:1;min-width:0;line-height:1.3}
+.home-card{padding:12px 14px;cursor:pointer;margin-bottom:0}
+.home-top{display:flex;align-items:center;gap:12px}
+.gauge{width:76px;height:76px;flex:0 0 76px}
+.gauge.lv1{--lg-toit:.13;--lg-oiseaux:.13}
+.gauge.lv2{--lg-oiseaux:.13}
+.home-top .kicker{font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.home-top .date{font-size:1.32rem;font-weight:800;letter-spacing:-.03em;line-height:1.1;margin:2px 0;color:var(--accent-text)}
+.home-top .date.no{color:var(--warn);font-size:1.15rem}
+.home-top .sub{font-size:.85rem;color:var(--muted)}
+.home-apport{display:flex;justify-content:space-between;font-size:.84rem;margin-top:2px}
+.foyer{margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
+.foyer .t{display:flex;justify-content:space-between;align-items:baseline;font-size:.88rem}
+.foyer .bar{height:8px;margin:6px 0 0}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.duo .card{padding:10px 12px;margin:0}
+.duo h3{font-size:.92rem;font-weight:800;margin:0 0 6px;display:flex;align-items:center;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.duo .l{display:flex;justify-content:space-between;gap:6px;font-size:.84rem;padding:2px 0}
+.duo .l span:first-child{color:var(--muted)}
+.duo .l b{font-variant-numeric:tabular-nums}
+.duo .l.tot{border-top:1px solid var(--line);margin-top:4px;padding-top:6px;font-size:.9rem}
+.duo .l.tot span:first-child{color:var(--text);font-weight:700}
+.est{color:var(--muted);font-weight:500}
+.month-title{font-size:.78rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:10px 2px 6px}

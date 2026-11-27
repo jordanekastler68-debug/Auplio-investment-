@@ -3,7 +3,7 @@
    et les réglages derrière l'icône profil. */
 
 const VIEWS = {
-  home: () => {},
+  home: renderHome,
   month: () => {},
   project: renderProject,
   settings: renderSettings,
