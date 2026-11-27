@@ -150,3 +150,18 @@ function toast(text, action) {
   clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('show'), action ? 4500 : 2400);
 }
 const logoSVG = (cls = '') => `<svg class="logo ${cls}" viewBox="0 0 128 128" aria-hidden="true"><use href="#logo"/></svg>`;
+
+/* ---------- Le couple ---------- */
+const whoName = w => w === 'ab' ? 'Nous deux' : (state.people[w === 'b' ? 1 : 0].name || (w === 'b' ? 'Personne 2' : 'Personne 1'));
+const whoDot = w => `<span class="dot dot-${w}"></span>`;
+const nextWho = (w, withBoth = true) => w === 'a' ? 'b' : (w === 'b' && withBoth ? 'ab' : 'a');
+
+// Catégorie d'une charge fixe d'après son nom.
+function chargeCat(label) {
+  const t = String(label || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  if (/loyer|logement|copro/.test(t)) return 'Logement';
+  if (/electric|eau\b|gaz|energie|chauffage|fioul/.test(t)) return 'Énergie & eau';
+  if (/internet|box|telephone|mobile|forfait/.test(t)) return 'Internet & téléphone';
+  if (/assurance|mutuelle|prevoyance/.test(t)) return 'Assurances';
+  return 'Autres charges';
+}

@@ -54,9 +54,43 @@
 
 <main id="main">
   <section id="v-home" class="view"></section>
+  <section id="v-month" class="view"></section>
+  <section id="v-project" class="view"></section>
 
   <section id="v-settings" class="view">
     <div class="view-head"><button type="button" class="back" data-back aria-label="Retour">‹</button><h1>Réglages</h1></div>
+
+    <div class="card" id="setCouple">
+      <h2>Le couple</h2>
+      <div id="coupleEdit"></div>
+    </div>
+
+    <div class="card" id="setFixed">
+      <h2>Charges fixes</h2>
+      <p class="hint" style="margin:0 0 6px">Ajoutées automatiquement chaque mois, le jour indiqué.</p>
+      <ul class="items" id="fixedEdit"></ul>
+      <div class="chips" id="fixedAdd" style="margin-top:10px"></div>
+    </div>
+
+    <div class="card" id="setLoans">
+      <h2>Crédits en cours</h2>
+      <p class="hint" style="margin:0 0 6px">Mensualité et mois de la dernière échéance. Ajoutés automatiquement chaque mois.</p>
+      <ul class="items" id="loansEdit"></ul>
+      <div class="chips" style="margin-top:10px">
+        <button type="button" class="chip" data-add-loan="a" id="addLoanA">+ crédit</button>
+        <button type="button" class="chip" data-add-loan="b" id="addLoanB">+ crédit</button>
+      </div>
+    </div>
+
+    <div class="card" id="setCats">
+      <h2>Catégories de dépenses</h2>
+      <div class="chips" id="catEdit"></div>
+      <form id="catForm" class="row" style="margin-top:10px">
+        <input id="catName" type="text" placeholder="Nouvelle catégorie" maxlength="20" required>
+        <button type="submit" class="btn sm">Ajouter</button>
+      </form>
+    </div>
+
     <div class="card">
       <h2>Thème</h2>
       <div class="seg" id="themeSeg">
@@ -66,8 +100,20 @@
       </div>
       <p class="hint">« Auto » suit le réglage du téléphone.</p>
     </div>
+
+    <div class="card" id="setBackup">
+      <h2>Sauvegarde</h2>
+      <div id="backupBox"></div>
+    </div>
   </section>
 </main>
+
+<nav class="tabbar" id="tabbar">
+  <button type="button" class="tab" data-view="home"><svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7"/><path d="M6 10v10h12V10"/></svg><span>Accueil</span></button>
+  <button type="button" class="tab" data-view="month"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg><span>Mois</span></button>
+  <button type="button" class="plus" id="plusBtn" aria-label="Ajouter une dépense"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+  <button type="button" class="tab tab-project" data-view="project"><svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V11l7-6 7 6v10"/><path d="M10 21v-5h4v5"/></svg><span>Projet</span></button>
+</nav>
 
 <div id="toast" class="toast" role="status"></div>
 
