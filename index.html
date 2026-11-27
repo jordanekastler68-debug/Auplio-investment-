@@ -59,7 +59,24 @@
   </section>
   <section id="v-home" class="view"></section>
   <section id="v-month" class="view"></section>
-  <section id="v-project" class="view"></section>
+  <section id="v-project" class="view">
+    <div id="projResult"></div>
+    <form class="card" id="projForm" autocomplete="off">
+      <h2>La maison et le crédit</h2>
+      <label class="field euro">Prix de la maison<input id="pjPrice" type="text" inputmode="decimal"></label>
+      <div class="seg" id="pjType"><button type="button" data-pj-type="ancien">Ancien</button><button type="button" data-pj-type="neuf">Neuf</button></div>
+      <label class="field euro">Épargne déjà réunie pour la maison<input id="pjSaved" type="text" inputmode="decimal"></label>
+      <p class="hint" style="margin-top:-4px">Calculée chaque mois par l'appli. Corrigez-la si vos comptes disent autre chose.</p>
+      <label class="field euro">Épargne prévue par mois<input id="pjGoal" type="text" inputmode="decimal" placeholder="calculée par l'appli"></label>
+      <p class="hint" style="margin-top:-4px" id="pjGoalHint"></p>
+      <div class="row">
+        <label class="field">Taux du crédit (%)<input id="pjRate" type="text" inputmode="decimal"></label>
+        <label class="field">Durée (ans, 25 max)<input id="pjYears" type="number" min="5" max="25" inputmode="numeric"></label>
+        <label class="field">Assurance (% par an)<input id="pjIns" type="text" inputmode="decimal"></label>
+      </div>
+      <p class="hint" id="pjRateAt"></p>
+    </form>
+  </section>
 
   <section id="v-settings" class="view">
     <div class="view-head"><button type="button" class="back" data-back aria-label="Retour">‹</button><h1>Réglages</h1></div>
@@ -122,8 +139,10 @@
 <div id="toast" class="toast" role="status"></div>
 
 <script src="js/core.js"></script>
+<script src="js/calc.js"></script>
 <script src="js/reglages.js"></script>
 <script src="js/onboarding.js"></script>
+<script src="js/projet.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

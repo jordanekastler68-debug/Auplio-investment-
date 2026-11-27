@@ -15,8 +15,9 @@ const LOAN_CAT = 'Crédits';
 /* ---------- Outils ---------- */
 const eur = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
 const eur0 = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
-const fmt = n => eur.format(Math.round((n || 0) * 100) / 100);
-const fmt0 = n => eur0.format(Math.round(n || 0));
+// Espace insécable normale à la place de l'espace fine (invisible dans certains graisses de la police).
+const fmt = n => eur.format(Math.round((n || 0) * 100) / 100).replace(/\u202f/g, '\u00a0');
+const fmt0 = n => eur0.format(Math.round(n || 0)).replace(/\u202f/g, '\u00a0');
 const parseNum = s => { const n = parseFloat(String(s ?? '').replace(/[\s  €%]/g, '').replace(',', '.')); return isFinite(n) ? n : 0; };
 const numStr = n => (n === null || n === undefined || n === '') ? '' : String(n).replace('.', ',');
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -165,3 +166,7 @@ function chargeCat(label) {
   if (/assurance|mutuelle|prevoyance/.test(t)) return 'Assurances';
   return 'Autres charges';
 }
+const plural = (n, w) => `${n} ${w}${n > 1 ? 's' : ''}`;
+const duration = m => m < 12 ? `${m} mois` : (m % 12 ? `${plural(Math.floor(m / 12), 'an')} et ${m % 12} mois` : plural(m / 12, 'an'));
+const pctStr = (n, d = 1) => (n * 100).toLocaleString('fr-FR', { maximumFractionDigits: d }) + ' %';
+const progressBar = (ratio, cls = '') => `<div class="bar ${cls}"><i style="width:${clamp(ratio, 0, 1) * 100}%"></i></div>`;

@@ -155,3 +155,24 @@ body.no-nav .tabbar,body.no-nav .top .icon-btn{display:none}
 .loan-line .field:not(.euro){flex:1.5 1 0;min-width:0}
 .loan-line .field{margin:0}
 .loan-line .x{margin-bottom:6px}
+
+/* Résultats */
+.hero{padding:18px 18px 16px}
+.hero .kicker{font-size:.8rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.hero .date{font-size:1.75rem;font-weight:800;letter-spacing:-.03em;line-height:1.15;margin:4px 0 2px;color:var(--accent-text)}
+.hero .date.no{color:var(--warn);font-size:1.3rem}
+.hero .sub{color:var(--muted);font-size:.9rem}
+.bar{height:10px;border-radius:6px;background:var(--surface-2);overflow:hidden;margin:8px 0 4px}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:6px;transition:width .4s}
+.bar.ok i{background:var(--ok)}
+.lines{margin:0;padding:0;list-style:none}
+.lines li{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:.92rem}
+.lines li:last-child{border-bottom:0}
+.lines li span:last-child{font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
+.lines li.strong{font-size:1rem}.lines li.strong span:first-child{font-weight:700}
+.missing{background:var(--warn-soft);border-radius:12px;padding:10px 12px;margin-top:10px;font-size:.9rem}
+.missing b{color:var(--warn)}
+.whatif li{align-items:center}
+.whatif small{display:block;color:var(--muted);font-weight:500;font-size:.8rem}
+.gain{color:var(--ok)}
+#pjType{margin:4px 0 2px}

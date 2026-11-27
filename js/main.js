@@ -5,7 +5,7 @@
 const VIEWS = {
   home: () => {},
   month: () => {},
-  project: () => {},
+  project: renderProject,
   settings: renderSettings,
   setup: renderSetup,
 };
