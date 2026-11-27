@@ -1,4 +1,4 @@
-package fr.auplio.investment
+package fr.nestgoal
 
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException

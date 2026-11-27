@@ -4,8 +4,8 @@ Enveloppe Android (WebView) autour des mêmes fichiers que la version web : `ind
 `fonts/`, `icons/`. Ils sont rangés dans l'APK : l'appli fonctionne sans connexion et les données restent
 dans le stockage privé de l'appli (effacées seulement si on la désinstalle : pensez à la sauvegarde).
 
-- **Identifiant** : `fr.auplio.investment`, conservé de l'ancienne appli « Auplio Investment ».
-  NestGoal s'installe donc par-dessus, en simple mise à jour.
+- **Identifiant Android** : `fr.auplio.investment`, conservé de l'ancienne appli (invisible à l'écran).
+  NestGoal s'installe donc par-dessus, en simple mise à jour. Code Kotlin : paquet `fr.nestgoal`.
 - **Fabrication** : GitHub Actions, dans le dépôt privé `Auplio`, branche `investment`. Le workflow
   récupère ce dépôt, ajoute la clé de signature et publie l'APK dans les Releases du dépôt `Auplio`.
   Il copie dans l'APK : `index.html`, `manifest.webmanifest`, `css/`, `js/`, `fonts/`, `icons/`
