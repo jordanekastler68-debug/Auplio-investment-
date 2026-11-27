@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <!-- LOGO PROVISOIRE NestGoal : deux oiseaux dans un nid, sous un toit.
+       À remplacer par les fichiers définitifs. Garder les trois calques (id) : la jauge de l'accueil
+       les allume un par un : lg-nid (< 1/3 de l'apport), lg-toit (jusqu'à 100 %), lg-oiseaux (apport réuni).
+       Après remplacement : node tools/make-icons.js (régénère les icônes web et Android). -->
+  <g id="lg-toit">
+    <path d="M18 60 L64 22 L110 60" fill="none" stroke="#C2603A" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="86" y="28" width="10" height="18" rx="2" fill="#C2603A"/>
+  </g>
+  <g id="lg-oiseaux">
+    <ellipse cx="50" cy="74" rx="14" ry="13" fill="#7A4A32"/>
+    <circle cx="45" cy="70" r="2.2" fill="#FBF6EF"/>
+    <path d="M36 72 L30 75 L36 77 Z" fill="#E0A458"/>
+    <ellipse cx="78" cy="72" rx="14" ry="14" fill="#A4673F"/>
+    <circle cx="83" cy="67" r="2.2" fill="#FBF6EF"/>
+    <path d="M92 69 L98 72 L92 74 Z" fill="#E0A458"/>
+  </g>
+  <g id="lg-nid">
+    <path d="M20 80 Q64 124 108 80 Z" fill="#C89466"/>
+    <path d="M26 86 Q64 106 102 86 M32 94 Q64 112 96 94 M42 102 Q64 116 86 102" fill="none" stroke="#9A6A44" stroke-width="3" stroke-linecap="round"/>
+    <path d="M18 80 L110 80" stroke="#9A6A44" stroke-width="5" stroke-linecap="round"/>
+  </g>
+</svg>

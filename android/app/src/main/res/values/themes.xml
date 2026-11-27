@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.AuplioInvestment" parent="Theme.AppCompat.Light.NoActionBar">
-        <item name="colorPrimary">@color/night</item>
-        <item name="colorPrimaryDark">@color/night</item>
-        <item name="colorAccent">@color/night</item>
-        <item name="android:windowBackground">@color/night</item>
-        <item name="android:statusBarColor">@color/night</item>
-        <item name="android:navigationBarColor">@color/night</item>
+    <style name="Theme.NestGoal" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/terracotta</item>
+        <item name="colorPrimaryDark">@color/background</item>
+        <item name="colorAccent">@color/terracotta</item>
+        <!-- Écran de démarrage (Android 8 à 11) : logo NestGoal sur fond crème. -->
+        <item name="android:windowBackground">@drawable/splash</item>
+        <item name="android:statusBarColor">@color/background</item>
+        <item name="android:navigationBarColor">@color/background</item>
     </style>
 </resources>

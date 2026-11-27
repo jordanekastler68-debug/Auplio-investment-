@@ -1,26 +1,28 @@
-# Auplio Investment
+# NestGoal
 
-Tableau de bord du couple pour **acheter une maison** : chacun note ses dépenses sur son téléphone, saisit
-son net payé chaque mois, et les deux voient le même tableau de bord.
+Appli Android pour un couple, qui répond à une seule question : **quand est-ce qu'on achète notre maison ?**
 
-## Écrans (v0.5)
-- **Tableau de bord** : date d'achat possible de la maison (apport, effort du mois réparti entre les deux,
-  bouton « C'est fait »), mensualité et endettement (35 % max), colonnes Jordane / Iris (salaire, charges,
-  dépenses, reste), total du foyer, **charges du mois** (loyer, eau, électricité, internet, assurances,
-  crédits…, ramenées au mois si facturées tous les 2/3/6/12 mois), où part l'argent à deux.
-- **Ajouter** : montant, catégorie, ajouter (3 touches), au nom de la personne du téléphone.
-- **Historique** : dépenses du mois, filtre par personne, fiches de paie du mois.
-- **Réglages** (roue dentée) : synchro, maison, charges, foyer, catégories, relevé CSV, sauvegarde.
+Les données restent sur le téléphone (aucun serveur, aucun compte). Interface web (HTML, CSS, JavaScript
+sans dépendance) empaquetée dans une appli Android (WebView, voir `android/LISEZMOI.md`).
 
-## Synchronisation
-Dépôt GitHub **privé** (ex. `auplio-foyer`), un fichier par personne (`foyer/a.json`, `foyer/b.json`) :
-chaque téléphone n'écrit que le sien, aucun conflit. Fusion : dépenses unies par identifiant, suppressions
-propagées, salaire de chacun pris sur son propre téléphone, réglages = version modifiée le plus récemment.
-Le second téléphone se configure avec un **code d'invitation** (Réglages → Envoyer le code d'invitation).
+## Écrans
+- **Démarrage** (une seule fois) : prénoms, salaires nets avant impôt sur le revenu et jours de paie,
+  maison visée, charges fixes, crédits en cours.
+- **Accueil** : rappels, date d'achat avec la jauge du logo, épargne du mois, une colonne par personne.
+- **Mois** : où part l'argent, salaires et charges du mois, dépenses par jour, filtres.
+- **Projet** : date d'achat, apport, crédit possible, « et si… ? », réglages du crédit.
+- **Bouton +** : une dépense en 3 gestes (montant, catégorie, valider).
+- **Réglages** (icône profil) : le couple, charges fixes, crédits, catégories, thème, sauvegarde.
 
-## Installation
-- **Android** : APK publiée dans les Releases du dépôt privé `Auplio` (`investment-android-N`).
-- **iPhone** : Safari → https://jordanekastler68-debug.github.io/Auplio-investment-/ → Partager → « Sur l'écran d'accueil ».
+## Règles de calcul (`js/calc.js`)
+- Mensualité maximale = 35 % des revenus nets avant impôt du couple, assurance comprise, moins les
+  mensualités des crédits encore en cours à la date d'achat.
+- Frais de notaire : 7,5 % (ancien), 2,5 % (neuf). Apport visé : frais seuls, ou frais + 10 % du prix.
+- Date d'achat : premier mois où l'apport visé est réuni et où prix + frais − apport ≤ crédit possible.
+- Épargne : salaires reçus − dépenses (charges et crédits ajoutés automatiquement chaque mois).
 
 ## Développement
-`python3 -m http.server 8080` puis http://localhost:8080. Incrémenter `VERSION` dans `sw.js` à chaque mise en ligne.
+- Lancer : `python3 -m http.server 8080` puis http://localhost:8080
+- Tests : `npm test` (Node 18 ou plus, aucune dépendance)
+- Icônes : remplacer `icons/logo.svg` puis `npm run icons` (Playwright requis)
+- Incrémenter `VERSION` dans `sw.js` à chaque mise en ligne de la version web.

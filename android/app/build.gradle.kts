@@ -17,6 +17,8 @@ val hasKey = signingProps.getProperty("storePassword") != null
 val buildNumber = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
 
 android {
+    // Identifiant conservé de l'ancienne appli « Auplio Investment » : NestGoal s'installe par-dessus,
+    // en simple mise à jour, avec la même clé de signature.
     namespace = "fr.auplio.investment"
     compileSdk = 35
 
@@ -25,7 +27,7 @@ android {
         minSdk = 26
         targetSdk = 35
         versionCode = buildNumber
-        versionName = "0.5.$buildNumber"
+        versionName = "1.0.$buildNumber"
     }
 
     signingConfigs {
@@ -68,7 +70,7 @@ val repoRoot = rootDir.parentFile
 val wwwAssets = layout.buildDirectory.dir("generated/www-assets")
 val copyWww = tasks.register<Copy>("copyWww") {
     from(repoRoot) {
-        include("index.html", "app.js", "bank.js", "styles.css", "manifest.webmanifest", "icons/**")
+        include("index.html", "manifest.webmanifest", "css/**", "js/**", "fonts/**", "icons/**")
     }
     into(wwwAssets.map { it.dir("www") })
 }

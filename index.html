@@ -1,243 +1,182 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0f1b2d">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Auplio">
-<title>Auplio Investment</title>
+<meta name="theme-color" content="#FBF6EF">
+<meta name="apple-mobile-web-app-title" content="NestGoal">
+<title>NestGoal</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="styles.css">
+<link rel="preload" href="fonts/PlusJakartaSans-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="css/styles.css">
+<script>
+  // Thème appliqué avant l'affichage, pour éviter un flash clair en mode sombre.
+  try { var t = localStorage.getItem('nestgoal-theme') || 'auto';
+    if (t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.dataset.theme = 'dark'; } catch (e) {}
+</script>
 </head>
 <body>
-<header class="top">
-  <h1>Auplio <span>Investment</span></h1>
-  <div class="top-r">
-    <span id="syncDot" class="sync-dot" title="Synchronisation"></span>
-    <span id="monthLabel" class="month"></span>
-    <button type="button" id="gear" class="gear" aria-label="Réglages">⚙</button>
-  </div>
+<!-- Logo PROVISOIRE (même dessin que icons/logo.svg). Les trois calques servent de jauge. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="logo" viewBox="0 0 128 128">
+    <g style="opacity:var(--lg-toit,1)">
+      <path d="M18 60 L64 22 L110 60" fill="none" stroke="var(--logo-roof)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="86" y="28" width="10" height="18" rx="2" fill="var(--logo-roof)"/>
+    </g>
+    <g style="opacity:var(--lg-oiseaux,1)">
+      <ellipse cx="50" cy="74" rx="14" ry="13" fill="var(--logo-bird1)"/>
+      <circle cx="45" cy="70" r="2.2" fill="#FBF6EF"/>
+      <path d="M36 72 L30 75 L36 77 Z" fill="#E0A458"/>
+      <ellipse cx="78" cy="72" rx="14" ry="14" fill="var(--logo-bird2)"/>
+      <circle cx="83" cy="67" r="2.2" fill="#FBF6EF"/>
+      <path d="M92 69 L98 72 L92 74 Z" fill="#E0A458"/>
+    </g>
+    <g style="opacity:var(--lg-nid,1)">
+      <path d="M20 80 Q64 124 108 80 Z" fill="var(--logo-nest)"/>
+      <path d="M26 86 Q64 106 102 86 M32 94 Q64 112 96 94 M42 102 Q64 116 86 102" fill="none" stroke="var(--logo-nest-line)" stroke-width="3" stroke-linecap="round"/>
+      <path d="M18 80 L110 80" stroke="var(--logo-nest-line)" stroke-width="5" stroke-linecap="round"/>
+    </g>
+  </symbol>
+</svg>
+
+<div id="splash" class="splash" aria-hidden="true">
+  <svg class="logo" viewBox="0 0 128 128"><use href="#logo"/></svg>
+  <b>NestGoal</b>
+</div>
+
+<header class="top" id="top">
+  <div class="brand"><svg class="logo" viewBox="0 0 128 128" aria-hidden="true"><use href="#logo"/></svg><span>NestGoal</span></div>
+  <button type="button" class="icon-btn" id="profileBtn" aria-label="Réglages">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>
+  </button>
 </header>
 
-<main>
-  <!-- ============ PREMIER LANCEMENT ============ -->
-  <section id="tab-welcome" class="tab">
-    <div class="card">
-      <h2>Bienvenue</h2>
-      <p class="muted small">Chacun installe l'appli sur son téléphone et note ses dépenses. Le tableau de bord montre le foyer à deux.</p>
-      <div class="row">
-        <label class="field">Prénom 1<input id="wNameA" type="text" maxlength="16" placeholder="Jordane"></label>
-        <label class="field">Prénom 2<input id="wNameB" type="text" maxlength="16" placeholder="Iris"></label>
-      </div>
-      <p class="label">Ce téléphone est celui de :</p>
-      <div class="row">
-        <button type="button" class="primary" data-setme="a" id="wMeA">Prénom 1</button>
-        <button type="button" class="primary" data-setme="b" id="wMeB">Prénom 2</button>
-      </div>
-    </div>
-    <div class="card">
-      <h2>On vous a envoyé un code ?</h2>
-      <p class="muted small">Si votre conjoint a déjà configuré l'appli, collez ici le code d'invitation qu'il vous a envoyé : tout se règle d'un coup.</p>
-      <textarea id="wCode" rows="3" placeholder="AUPLIO1:…"></textarea>
-      <button type="button" class="ghost" id="wCodeBtn">Utiliser le code</button>
-    </div>
+<main id="main">
+  <section id="v-setup" class="view">
+    <div class="steps" id="setupDots"></div>
+    <form id="setupForm" autocomplete="off"></form>
   </section>
-
-  <!-- ============ TABLEAU DE BORD ============ -->
-  <section id="tab-dash" class="tab">
-    <div id="banners"></div>
-
-    <div class="card" id="houseCard"></div>
-
-    <div class="duo" id="duo"></div>
-
-    <div class="card">
-      <div class="line big"><b>Le foyer ce mois-ci</b><b id="foyerLeft"></b></div>
-      <p class="muted small" id="foyerSub"></p>
-    </div>
-
-    <div class="card">
-      <div class="card-head"><h2>Charges du mois</h2><button type="button" class="ghost sm" data-go="reglages#chargesCard">Gérer</button></div>
-      <ul id="chargeList" class="list compact"></ul>
-    </div>
-
-    <div class="card">
-      <h2>Où part l'argent, à deux</h2>
-      <ul id="whereList" class="bars"></ul>
-      <p class="legend" id="legend"></p>
-    </div>
+  <section id="v-home" class="view">
+    <div id="homeBanners"></div>
+    <div id="homeCard"></div>
+    <div id="homeDuo"></div>
   </section>
-
-  <!-- ============ AJOUTER ============ -->
-  <section id="tab-add" class="tab">
-    <form id="addForm" class="card">
-      <label class="amount">
-        <input id="amount" type="text" inputmode="decimal" placeholder="0,00" autocomplete="off">
-        <span>€</span>
-      </label>
-      <div id="catChips" class="chips"></div>
-      <p class="muted small" id="addMeta"></p>
-      <div class="seg" id="whoSeg"></div>
-      <details class="more">
-        <summary>Date, note</summary>
-        <div class="row">
-          <input id="date" type="date">
-          <input id="note" type="text" placeholder="Note" maxlength="60">
-        </div>
-      </details>
-      <button type="submit" class="primary">Ajouter</button>
-      <p class="muted small center" id="addSync"></p>
+  <section id="v-month" class="view">
+    <div class="month-nav">
+      <button type="button" class="icon-btn" id="mPrev" aria-label="Mois précédent">‹</button>
+      <h1 id="mTitle"></h1>
+      <button type="button" class="icon-btn" id="mNext" aria-label="Mois suivant">›</button>
+    </div>
+    <div class="card" id="mWhere"></div>
+    <div class="card" id="mBudget"></div>
+    <div class="filters">
+      <div class="seg" id="mWho"></div>
+      <div class="chips scroll" id="mCats"></div>
+    </div>
+    <div id="mList"></div>
+  </section>
+  <section id="v-project" class="view">
+    <div id="projResult"></div>
+    <form class="card" id="projForm" autocomplete="off">
+      <h2>La maison et le crédit</h2>
+      <label class="field euro">Prix de la maison<input id="pjPrice" type="text" inputmode="decimal"></label>
+      <div class="seg" id="pjType"><button type="button" data-pj-type="ancien">Ancien</button><button type="button" data-pj-type="neuf">Neuf</button></div>
+      <label class="field euro">Épargne déjà réunie pour la maison<input id="pjSaved" type="text" inputmode="decimal"></label>
+      <p class="hint" style="margin-top:-4px">Calculée chaque mois par l'appli. Corrigez-la si vos comptes disent autre chose.</p>
+      <label class="field euro">Épargne prévue par mois<input id="pjGoal" type="text" inputmode="decimal" placeholder="calculée par l'appli"></label>
+      <p class="hint" style="margin-top:-4px" id="pjGoalHint"></p>
+      <div class="row">
+        <label class="field">Taux du crédit (%)<input id="pjRate" type="text" inputmode="decimal"></label>
+        <label class="field">Durée (ans, 25 max)<input id="pjYears" type="number" min="5" max="25" inputmode="numeric"></label>
+        <label class="field">Assurance (% par an)<input id="pjIns" type="text" inputmode="decimal"></label>
+      </div>
+      <p class="hint" id="pjRateAt"></p>
     </form>
-    <div class="card">
-      <h2>Dernières dépenses</h2>
-      <ul id="recentList" class="list"></ul>
-    </div>
   </section>
 
-  <!-- ============ HISTORIQUE ============ -->
-  <section id="tab-hist" class="tab">
-    <div class="card">
-      <div class="month-nav">
-        <button type="button" id="hPrev" aria-label="Mois précédent">‹</button>
-        <strong id="hMonth"></strong>
-        <button type="button" id="hNext" aria-label="Mois suivant">›</button>
-      </div>
-      <div class="seg" id="hFilter"></div>
-      <form id="paySet" class="pay-row"></form>
-      <p class="muted small" id="hTotals"></p>
-    </div>
-    <div class="card">
-      <ul id="hList" class="list"></ul>
-    </div>
-  </section>
+  <section id="v-settings" class="view">
+    <div class="view-head"><button type="button" class="back" data-back aria-label="Retour">‹</button><h1>Réglages</h1></div>
 
-  <!-- ============ RÉGLAGES ============ -->
-  <section id="tab-reglages" class="tab">
-    <div class="card" id="syncCard">
-      <h2>Synchronisation à deux</h2>
-      <p class="small" id="syncState"></p>
-      <div id="syncSetup">
-        <p class="muted small">Les données du foyer sont rangées dans un dépôt GitHub <b>privé</b> : chacun voit les saisies de l'autre automatiquement.</p>
-        <label class="field">Dépôt privé<input id="syRepo" type="text" placeholder="jordanekastler68-debug/auplio-foyer" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
-        <label class="field">Clé d'accès GitHub (jeton)<input id="syToken" type="password" placeholder="github_pat_…" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
-        <button type="button" class="primary" id="syTest">Tester et activer</button>
-      </div>
-      <div id="syncActive">
-        <button type="button" class="primary" id="syInvite">Envoyer le code d'invitation</button>
-        <button type="button" class="ghost" id="syNow">Synchroniser maintenant</button>
-        <button type="button" class="ghost danger" id="syOff">Désactiver sur ce téléphone</button>
+    <div class="card" id="setCouple">
+      <h2>Le couple</h2>
+      <div id="coupleEdit"></div>
+    </div>
+
+    <div class="card" id="setFixed">
+      <h2>Charges fixes</h2>
+      <p class="hint" style="margin:0 0 6px">Ajoutées automatiquement chaque mois, le jour indiqué.</p>
+      <ul class="items" id="fixedEdit"></ul>
+      <div class="chips" id="fixedAdd" style="margin-top:10px"></div>
+    </div>
+
+    <div class="card" id="setLoans">
+      <h2>Crédits en cours</h2>
+      <p class="hint" style="margin:0 0 6px">Mensualité et mois de la dernière échéance. Ajoutés automatiquement chaque mois.</p>
+      <ul class="items" id="loansEdit"></ul>
+      <div class="chips" style="margin-top:10px">
+        <button type="button" class="chip" data-add-loan="a" id="addLoanA">+ crédit</button>
+        <button type="button" class="chip" data-add-loan="b" id="addLoanB">+ crédit</button>
       </div>
     </div>
 
-    <form id="houseForm" class="card">
-      <h2>La maison</h2>
-      <div class="row">
-        <label class="field">Prix visé (€)<input id="pPrice" type="text" inputmode="decimal"></label>
-        <label class="field">Type<select id="pType"><option value="ancien">Ancien (notaire ≈ 7,5 %)</option><option value="neuf">Neuf (notaire ≈ 2,5 %)</option></select></label>
-      </div>
-      <div class="row">
-        <label class="field">Apport déjà de côté (€)<input id="pSaved" type="text" inputmode="decimal"></label>
-        <label class="field">Travaux (€)<input id="pWorks" type="text" inputmode="decimal"></label>
-      </div>
-      <div class="row">
-        <label class="field">Apport visé (% du prix, en plus des frais)<input id="pApportPct" type="number" min="0" max="100" step="1"></label>
-        <label class="field">Part du reste mise de côté (%)<input id="pShare" type="number" min="10" max="100" step="5"></label>
-      </div>
-      <div class="row">
-        <label class="field">Taux du prêt (%)<input id="pRate" type="text" inputmode="decimal"></label>
-        <label class="field">Durée (ans)<input id="pYears" type="number" min="5" max="30" step="1"></label>
-        <label class="field">Assurance (%/an)<input id="pIns" type="text" inputmode="decimal"></label>
-      </div>
-      <button type="submit" class="primary">Enregistrer</button>
-    </form>
-
-    <div class="card" id="chargesCard">
-      <h2>Charges</h2>
-      <p class="muted small">Tout ce qui tombe régulièrement. Pour une facture tous les 2, 3, 6 ou 12 mois, l'appli la ramène au mois.</p>
-      <ul id="chargeEdit" class="list"></ul>
-      <p class="label">Ajouter :</p>
-      <div id="presetChips" class="chips"></div>
-      <form id="chargeForm">
-        <div class="row">
-          <input id="cLabel" type="text" placeholder="Nom (Électricité, Loyer…)" required>
-          <input id="cAmount" type="text" inputmode="decimal" placeholder="€" required class="short">
-        </div>
-        <div class="row">
-          <select id="cPeriod">
-            <option value="1">chaque mois</option>
-            <option value="2">tous les 2 mois</option>
-            <option value="3">tous les 3 mois</option>
-            <option value="6">tous les 6 mois</option>
-            <option value="12">une fois par an</option>
-          </select>
-          <select id="cWho"></select>
-          <button type="submit" class="ghost">+</button>
-        </div>
-      </form>
-    </div>
-
-    <form id="foyerForm" class="card">
-      <h2>Le foyer</h2>
-      <div class="row">
-        <label class="field">Prénom 1<input id="sNameA" type="text" maxlength="16"></label>
-        <label class="field">Prénom 2<input id="sNameB" type="text" maxlength="16"></label>
-      </div>
-      <label class="field">Ce téléphone est celui de<select id="sMe"></select></label>
-      <button type="submit" class="ghost">Enregistrer</button>
-    </form>
-
-    <div class="card">
+    <div class="card" id="setCats">
       <h2>Catégories de dépenses</h2>
-      <div id="catEdit" class="chips"></div>
-      <form id="catForm" class="row">
+      <div class="chips" id="catEdit"></div>
+      <form id="catForm" class="row" style="margin-top:10px">
         <input id="catName" type="text" placeholder="Nouvelle catégorie" maxlength="20" required>
-        <button type="submit" class="ghost">+</button>
+        <button type="submit" class="btn sm">Ajouter</button>
       </form>
     </div>
 
     <div class="card">
-      <h2>Relevé bancaire (facultatif)</h2>
-      <p class="muted small">Pour rattraper des dépenses oubliées : importez le relevé CSV de votre banque, les dépenses sont classées toutes seules.</p>
-      <label class="ghost file">Importer un relevé (CSV)<input id="csvFile" type="file" accept=".csv,.txt,text/csv,text/plain,text/comma-separated-values,application/vnd.ms-excel"></label>
-      <button type="button" id="undoImport" class="ghost danger" style="display:none;width:100%;margin-top:8px"></button>
-    </div>
-
-    <div class="card">
-      <h2>Sauvegarde</h2>
-      <p id="storageStatus" class="small"></p>
-      <div class="row">
-        <button type="button" id="exportBtn" class="ghost">Exporter (JSON)</button>
-        <button type="button" id="exportCsvBtn" class="ghost">Exporter (CSV)</button>
+      <h2>Thème</h2>
+      <div class="seg" id="themeSeg">
+        <button type="button" data-theme-set="auto">Auto</button>
+        <button type="button" data-theme-set="light">Clair</button>
+        <button type="button" data-theme-set="dark">Sombre</button>
       </div>
-      <label class="ghost file">Restaurer une sauvegarde<input id="importFile" type="file" accept="application/json,.json,.txt,text/plain"></label>
+      <p class="hint">« Auto » suit le réglage du téléphone.</p>
     </div>
-  </section>
 
-  <!-- ============ IMPORT CSV ============ -->
-  <section id="tab-import" class="tab">
-    <div class="card">
-      <div class="card-head"><h2>Vérifier l'import</h2><button type="button" class="ghost sm" id="impCancel">Annuler</button></div>
-      <p id="impSummary" class="small"></p>
-      <label class="field">Ce relevé est celui de<select id="impWho"></select></label>
-      <p class="muted small">Décochés d'office : salaires, virements vers l'épargne ou eToro, charges déjà déclarées, opérations déjà importées.</p>
+    <div class="card" id="setBackup">
+      <h2>Sauvegarde</h2>
+      <div id="backupBox"></div>
     </div>
-    <ul id="impList" class="implist"></ul>
-    <div class="impbar"><button type="button" class="primary" id="impGo">Importer</button></div>
   </section>
 </main>
 
-<nav class="tabs" id="nav">
-  <button type="button" data-tab="dash" class="active">▦<span>Tableau de bord</span></button>
-  <button type="button" data-tab="add">＋<span>Ajouter</span></button>
-  <button type="button" data-tab="hist">☰<span>Historique</span></button>
+<nav class="tabbar" id="tabbar">
+  <button type="button" class="tab" data-view="home"><svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7"/><path d="M6 10v10h12V10"/></svg><span>Accueil</span></button>
+  <button type="button" class="tab" data-view="month"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg><span>Mois</span></button>
+  <button type="button" class="plus" id="plusBtn" aria-label="Ajouter une dépense"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+  <button type="button" class="tab tab-project" data-view="project"><svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V11l7-6 7 6v10"/><path d="M10 21v-5h4v5"/></svg><span>Projet</span></button>
 </nav>
 
-<div id="toast" class="toast"></div>
-<script src="bank.js"></script>
-<script src="app.js"></script>
+<!-- Ajout d'une dépense : montant, catégorie, valider -->
+<div class="sheet-bg" id="sheetBg"></div>
+<form class="sheet" id="sheet" autocomplete="off" aria-label="Ajouter une dépense">
+  <label class="amount"><input id="addAmount" type="text" inputmode="decimal" placeholder="0" aria-label="Montant"><span>€</span></label>
+  <div class="chips cats" id="addCats"></div>
+  <div class="sheet-row">
+    <button type="button" class="who-btn big" id="addWho"></button>
+    <button type="button" class="link small" id="addDateBtn"></button>
+    <input type="date" id="addDate" hidden>
+  </div>
+  <button type="submit" class="btn" id="addOk">Valider</button>
+</form>
+
+<div id="toast" class="toast" role="status"></div>
+
+<script src="js/core.js"></script>
+<script src="js/calc.js"></script>
+<script src="js/reglages.js"></script>
+<script src="js/onboarding.js"></script>
+<script src="js/projet.js"></script>
+<script src="js/accueil.js"></script>
+<script src="js/ajout.js"></script>
+<script src="js/mois.js"></script>
+<script src="js/auto.js"></script>
+<script src="js/main.js"></script>
 </body>
 </html>

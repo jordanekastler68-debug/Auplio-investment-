@@ -1,0 +1,10 @@
+{
+  "name": "nestgoal",
+  "version": "1.0.0",
+  "private": true,
+  "description": "NestGoal : quand est-ce qu'on achète notre maison ?",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "icons": "node tools/make-icons.js"
+  }
+}
