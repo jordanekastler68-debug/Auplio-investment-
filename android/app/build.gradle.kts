@@ -17,12 +17,12 @@ val hasKey = signingProps.getProperty("storePassword") != null
 val buildNumber = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
 
 android {
-    // Identifiant conservé de l'ancienne appli « Auplio Investment » : NestGoal s'installe par-dessus,
-    // en simple mise à jour, avec la même clé de signature.
-    namespace = "fr.auplio.investment"
+    namespace = "fr.nestgoal"
     compileSdk = 35
 
     defaultConfig {
+        // Identifiant Android de l'ancienne appli, conservé : NestGoal s'installe par-dessus, en simple
+        // mise à jour. Le changer créerait une deuxième appli à côté de l'ancienne. Invisible à l'écran.
         applicationId = "fr.auplio.investment"
         minSdk = 26
         targetSdk = 35
@@ -32,7 +32,8 @@ android {
 
     signingConfigs {
         if (hasKey) {
-            create("auplioInvestment") {
+            create("nestgoal") {
+                // Nom du fichier de clé tel qu'il est rangé dans le dépôt privé (à ne pas renommer ici seul).
                 storeFile = rootProject.file("signing/auplio-investment.p12")
                 storeType = "PKCS12"
                 storePassword = signingProps.getProperty("storePassword")
@@ -45,7 +46,7 @@ android {
     buildTypes {
         getByName("release") {
             isMinifyEnabled = false
-            signingConfig = if (hasKey) signingConfigs.getByName("auplioInvestment") else signingConfigs.getByName("debug")
+            signingConfig = if (hasKey) signingConfigs.getByName("nestgoal") else signingConfigs.getByName("debug")
         }
     }
 
