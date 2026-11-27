@@ -29,7 +29,7 @@ function renderHome() {
   const { hh, plan } = planNow(), cur = hh.cur;
   $('homeBanners').innerHTML = homeBanners(hh);
 
-  const head = planHeadline(plan);
+  const head = planHeadline(plan, hh);
   const ratio = plan.target > 0 ? hh.savedNow / plan.target : 0;
   const level = state.house.price > 0 ? NGCalc.gaugeLevel(ratio) : 1;
   const m = hh.month(cur);

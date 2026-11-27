@@ -8,8 +8,10 @@ function planNow() {
 }
 
 // Phrase principale : la date d'achat, ou ce qui manque.
-function planHeadline(plan) {
-  if (plan.ok) return { date: plan.months === 0 ? 'Dès maintenant' : `En ${monthName(plan.month)}`, sub: plan.months === 0 ? 'L\'apport est réuni et la banque peut suivre.' : `dans ${duration(plan.months)}` };
+// Tant qu'il n'y a ni salaire reçu ni un mois complet de dépenses, la date reste une estimation provisoire.
+function planHeadline(plan, hh) {
+  const rough = hh && !hh.goalManual && (hh.receivedEstimated || !hh.usualBasis) ? ' · estimation provisoire' : '';
+  if (plan.ok) return { date: plan.months === 0 ? 'Dès maintenant' : `En ${monthName(plan.month)}`, sub: (plan.months === 0 ? 'L\'apport est réuni et la banque peut suivre.' : `dans ${duration(plan.months)}`) + (plan.months ? rough : '') };
   if (plan.reason === 'no-price') return { date: 'Quel prix visez-vous ?', sub: 'Indiquez le prix de la maison dans l\'onglet Projet.', no: true };
   return { date: 'Pas possible pour l\'instant', sub: plan.reason === 'no-saving' ? 'Vous n\'épargnez rien chaque mois.' : 'Pas dans les 30 prochaines années à ce rythme.', no: true };
 }
@@ -25,7 +27,7 @@ function missingHTML(plan) {
 
 function renderProject() {
   const { params, hh, plan } = planNow(), h = state.house;
-  const head = planHeadline(plan);
+  const head = planHeadline(plan, hh);
   const ratio = plan.target > 0 ? hh.savedNow / plan.target : 0;
   let html = `<div class="card hero">
       <p class="kicker">Achat de la maison</p>
