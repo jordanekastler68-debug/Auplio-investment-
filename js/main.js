@@ -51,6 +51,7 @@ document.addEventListener('click', e => {
 
 load().then(data => {
   state = data;
+  runAuto();
   show(state.setupDone ? 'home' : 'setup');
   setTimeout(() => $('splash').classList.add('gone'), 350);
   if (!ANDROID && navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});

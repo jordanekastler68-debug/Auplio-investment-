@@ -38,10 +38,8 @@ import java.io.File
  * dans le stockage privé de l'appli : elles ne sont effacées que si l'appli est désinstallée.
  *
  * Pont JavaScript « NestGoalAndroid » :
- *  - share(nom, contenu, texte) : envoie le fichier de données à l'autre téléphone (WhatsApp, mail…)
- *  - save(nom, contenu, type)   : enregistre un export dans Téléchargements/NestGoal
+ *  - save(nom, contenu, type)   : enregistre la sauvegarde dans Téléchargements/NestGoal
  *  - setDark(sombre, couleur)   : accorde les barres du système au thème choisi dans l'appli
- *  - shareText(texte)           : envoie le code d'invitation (synchro) par WhatsApp, SMS…
  */
 class MainActivity : AppCompatActivity() {
 
@@ -96,8 +94,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
         web.webChromeClient = object : WebChromeClient() {
-            // Import d'un relevé CSV ou d'un fichier de partage : on montre tous les fichiers,
-            // car les gestionnaires de fichiers ne reconnaissent pas toujours le type des .csv.
+            // Import d'une sauvegarde : on montre tous les fichiers, car les gestionnaires de fichiers
+            // ne reconnaissent pas toujours le type des .json.
             override fun onShowFileChooser(view: WebView, callback: ValueCallback<Array<Uri>>, params: WebChromeClient.FileChooserParams): Boolean {
                 fileCallback?.onReceiveValue(null)
                 fileCallback = callback
@@ -168,12 +166,13 @@ class MainActivity : AppCompatActivity() {
             clipData = ClipData.newRawUri(file.name, uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        startActivity(Intent.createChooser(send, "Envoyer les données"))
+        startActivity(Intent.createChooser(send, "Enregistrer la sauvegarde"))
     }
 
     private fun saveToDownloads(name: String, content: String, mime: String): Boolean {
         if (Build.VERSION.SDK_INT < 29) {
-            // Android 8 et 9 : pas d'accès direct à Téléchargements sans permission, on passe par le partage.
+            // Android 8 et 9 : pas d'accès direct à Téléchargements sans permission : on propose
+            // d'envoyer le fichier (mail, Drive…), ce qui revient à le mettre en lieu sûr.
             runOnUiThread { shareFile(name, content, "") }
             return true
         }
@@ -189,25 +188,8 @@ class MainActivity : AppCompatActivity() {
 
     inner class Bridge {
         @JavascriptInterface
-        fun share(name: String, content: String, text: String) {
-            runOnUiThread {
-                try { shareFile(name, content, text) } catch (e: Exception) { }
-            }
-        }
-
-        @JavascriptInterface
         fun save(name: String, content: String, mime: String): Boolean =
             try { saveToDownloads(name, content, mime) } catch (e: Exception) { false }
-
-        @JavascriptInterface
-        fun shareText(text: String) {
-            runOnUiThread {
-                try {
-                    val send = Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, text) }
-                    startActivity(Intent.createChooser(send, "Envoyer"))
-                } catch (e: Exception) { }
-            }
-        }
 
         @JavascriptInterface
         fun setDark(dark: Boolean, color: String) {

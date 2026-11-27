@@ -137,3 +137,19 @@ test('budget du foyer : « nous deux » est partagé moitié-moitié, épargne r
   // 4 000 € indiqués en janvier + l'épargne de février.
   assert.equal(h.savedNow, 4000 + 1800);
 });
+
+test('charges fixes et crédits ajoutés automatiquement chaque mois, une seule fois', () => {
+  const s = sample();
+  s.expenses = [];
+  s.fixed = [{ id: 'f1', label: 'Loyer', amount: 700, cat: 'Logement', who: 'ab', day: 5, from: '2027-01' }];
+  s.loans = [{ id: 'l1', label: 'Voiture', who: 'a', monthly: 150, end: '2027-02', day: 31, from: '2027-01' }];
+  const due = C.dueAutoEntries(s, '2027-03-04');
+  // Loyer : janvier, février (mars pas encore : le 5) ; crédit : janvier et février (fin en février), jour 31 → fin du mois.
+  assert.deepEqual(due.map(e => e.auto).sort(), ['f:f1:2027-01', 'f:f1:2027-02', 'l:l1:2027-01', 'l:l1:2027-02']);
+  assert.equal(due.find(e => e.auto === 'l:l1:2027-02').date, '2027-02-28');
+  // Déjà créées ou supprimées à la main : pas recréées.
+  s.expenses = due.map((e, i) => ({ ...e, id: 'x' + i })).filter(e => e.auto !== 'f:f1:2027-01');
+  s.skipAuto = { 'f:f1:2027-01': 1 };
+  assert.deepEqual(C.dueAutoEntries(s, '2027-03-04'), []);
+  assert.deepEqual(C.dueAutoEntries(s, '2027-03-05').map(e => e.auto), ['f:f1:2027-03']);
+});

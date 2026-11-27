@@ -21,6 +21,7 @@ function homeBanners(hh) {
     const when = d => d === day + 1 ? 'demain' : `le ${d}`;
     out.push(`<div class="banner"><p>À venir : ${soon.map(c => `${esc(c.label)} ${fmt0(c.amount)} ${when(c.day)}`).join(', ')}</p></div>`);
   }
+  if (backupLate()) out.push(`<div class="banner"><p>Pensez à sauvegarder vos données dans un fichier.</p><button type="button" class="btn sm" data-go="settings#setBackup">Sauvegarder</button></div>`);
   return out.slice(0, 2).join('');   // deux rappels au plus : l'accueil doit tenir sur un écran
 }
 

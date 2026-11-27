@@ -152,10 +152,33 @@ function planParams(s, today) {
     monthlySaving: h.goal, income: h.income, loans: s.loans, rate: house.rate, years: house.years, ins: house.ins };
 }
 
+/* ---------- Lignes automatiques ----------
+   Chaque charge fixe et chaque mensualité de crédit devient une dépense le jour indiqué, chaque mois,
+   depuis le mois où elle a été ajoutée (et jusqu'à la dernière échéance pour un crédit).
+   Clé unique par ligne : une ligne déjà créée, ou supprimée à la main, n'est jamais recréée. */
+function dueAutoEntries(s, today) {
+  const cur = today.slice(0, 7), setupMonth = (s.setupDone || today).slice(0, 7);
+  const have = new Set(s.expenses.map(e => e.auto).filter(Boolean));
+  const skip = s.skipAuto || {};
+  const out = [];
+  const each = (kind, x, amount, cat, who, label, last) => {
+    let k = x.from && x.from > setupMonth ? x.from : setupMonth;
+    for (let n = 0; k <= cur && (!last || k <= last) && n < 600; k = addMonths(k, 1), n++) {
+      const date = `${k}-${String(Math.min(x.day || 1, daysInMonth(k))).padStart(2, '0')}`;
+      const key = `${kind}:${x.id}:${k}`;
+      if (date > today || have.has(key) || skip[key]) continue;
+      out.push({ date, amount, cat, who, note: label, auto: key });
+    }
+  };
+  s.fixed.filter(f => f.amount > 0).forEach(f => each('f', f, f.amount, f.cat, f.who, f.label));
+  s.loans.filter(l => l.monthly > 0).forEach(l => each('l', l, l.monthly, 'Crédits', l.who, l.label, l.end));
+  return out;
+}
+
 // Jauge du logo : 1 = nid (moins d'un tiers de l'apport), 2 = toit (jusqu'à 100 %), 3 = deux oiseaux (apport réuni).
 const gaugeLevel = ratio => ratio >= 1 ? 3 : ratio >= 1 / 3 ? 2 : 1;
 
 const NGCalc = { NOTAIRE, DEBT_MAX, MAX_YEARS, addMonths, monthDiff, daysInMonth, loanFactor, perEuro, maxMonthly, borrowable,
-  notaryRate, notaryFees, apportTarget, runningLoans, purchasePlan, scenarios, household, planParams, gaugeLevel, share };
+  notaryRate, notaryFees, apportTarget, runningLoans, purchasePlan, scenarios, household, planParams, gaugeLevel, share, dueAutoEntries };
 if (typeof module !== 'undefined') module.exports = NGCalc; else window.NGCalc = NGCalc;
 })();

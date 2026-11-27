@@ -27,7 +27,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Partage du fichier de données vers l'autre téléphone (WhatsApp, mail…). -->
+        <!-- Envoi du fichier de sauvegarde (Android 8 et 9 seulement, voir MainActivity.saveToDownloads). -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.files"

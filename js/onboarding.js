@@ -12,7 +12,8 @@ function setupBody(i) {
     <h1>Bienvenue dans NestGoal</h1>
     <p class="lead">Une seule question : quand est-ce que vous achetez votre maison ? Commençons par vos prénoms.</p>
     <label class="field big">Ton prénom<input id="suNameA" type="text" maxlength="20" value="${esc(A.name)}" placeholder="Prénom 1" autocapitalize="words" required></label>
-    <label class="field big">Le prénom de ton ou ta partenaire<input id="suNameB" type="text" maxlength="20" value="${esc(B.name)}" placeholder="Prénom 2" autocapitalize="words" required></label>`;
+    <label class="field big">Le prénom de ton ou ta partenaire<input id="suNameB" type="text" maxlength="20" value="${esc(B.name)}" placeholder="Prénom 2" autocapitalize="words" required></label>
+    <label class="link small" style="display:block;margin-top:14px">Nouveau téléphone ? Importer une sauvegarde<input type="file" id="importFile" accept="application/json,.json" hidden></label>`;
   if (i === 1) return `
     <h1>Vos salaires</h1>
     <p class="lead">Le salaire net <b>avant impôt sur le revenu</b>, par mois : c'est la ligne « net à payer avant impôt sur le revenu » de la fiche de paie. C'est ce chiffre que regarde la banque.</p>
@@ -54,7 +55,7 @@ function renderSetup() {
       <button type="submit" class="btn">${setupStep === SETUP_STEPS - 1 ? 'C\'est parti' : 'Suivant'}</button>
     </div>`;
   const first = $('setupForm').querySelector('input');
-  if (first && !first.value && setupStep < 4) setTimeout(() => first.focus(), 50);
+  if (first && first.type !== 'file' && !first.value && setupStep < 4) setTimeout(() => first.focus(), 50);
 }
 
 // Lit les champs de l'écran en cours et les range dans les données.
@@ -96,7 +97,7 @@ $('setupForm').addEventListener('submit', e => {
   state.loans = state.loans.filter(l => l.monthly > 0);
   state.house.rateAt = state.house.rateAt || todayISO();
   state.setupDone = todayISO();
-  save(); show('home');
+  runAuto(); save(); show('home');
   toast('C\'est prêt !');
 });
 
